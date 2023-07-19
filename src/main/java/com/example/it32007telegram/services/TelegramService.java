@@ -5,13 +5,14 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.util.List;
+
 public interface TelegramService {
+    SendMessage startCommandReceived(Message message);
 
     SendMessage listCommandReceived(CallbackQuery callbackQuery);
 
-    SendMessage startCommandReceived(Message message);
-
-    SendMessage createCommandReceived(CallbackQuery callbackQuery);
+    List<Object> createCommandReceived(CallbackQuery callbackQuery);
 
     SendMessage searchCommandReceived(CallbackQuery callbackQuery);
 

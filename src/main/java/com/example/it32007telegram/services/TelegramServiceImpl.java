@@ -145,7 +145,7 @@ public class TelegramServiceImpl implements TelegramService  {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackLang = callbackQuery.getData().substring(7);
         if(callbackLang.startsWith("1")){
-            return createCommandReceived(callbackQuery);
+            return (SendMessage) createCommandReceived(callbackQuery).get(0);
         }
         if(callbackLang.startsWith("2")){
             return searchCommandReceived(callbackQuery);
@@ -272,9 +272,17 @@ public class TelegramServiceImpl implements TelegramService  {
     }
 
     @Override
-    public SendMessage createCommandReceived(CallbackQuery callbackQuery) {
+    public List<Object> createCommandReceived(CallbackQuery callbackQuery) {
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
-        return createMessage(callbackQuery.getMessage(), getTextByLanguage(user.getLang(), "EVENT.NAME"), true);
+        SendMessage message = enterEventName(callbackQuery.getMessage(), user.getLang());
+        List <Object> objs = new ArrayList<>();
+        objs.add(message);
+        objs.add(user);
+        return objs;
+    }
+
+    private SendMessage enterEventName(Message message, String lang) {
+        return createMessage(message, getTextByLanguage(lang, "EVENT.NAME"), true);
     }
 
     @Override

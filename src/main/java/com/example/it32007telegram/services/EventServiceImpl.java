@@ -2,13 +2,12 @@ package com.example.it32007telegram.services;
 
 import com.example.it32007telegram.daos.repositories.EventRepository;
 import com.example.it32007telegram.models.entities.Event;
-import com.example.it32007telegram.models.entities.base.Category;
 import com.example.it32007telegram.models.entities.users.User;
 import com.example.it32007telegram.services.base.BaseServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Message;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -19,8 +18,23 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
     private final EventRepository eventRepository;
 
     @Override
-    public SendMessage createEvent(Category.Code role, Message message) {
-        return null;
+    @Transactional
+    public Event createEvent(User user, Long messageId) {
+        Event event = Event.builder()
+                .createdUser(user)
+                .tgId(messageId)
+                .build();
+        return eventRepository.saveAndFlush(event);
+    }
+
+    @Override
+    public Event getOrCreateEvent(User user, Long messageId) {
+        return findEventByMessageId(messageId).orElseGet(() -> createEvent(user, messageId));
+    }
+
+    @Cacheable("event")
+    public Optional<Event> findEventByMessageId(Long messageId){
+        return eventRepository.findByTgId(messageId);
     }
 
     @Override
@@ -32,10 +46,5 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
         eventMap.put("created", mineEvents);
         eventMap.put("enrolled", events);
         return eventMap;
-    }
-
-    @Override
-    public Event getEventByNameAndUser(Optional<User> userOptional) {
-        return null;
     }
 }

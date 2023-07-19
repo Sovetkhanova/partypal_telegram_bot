@@ -1,10 +1,12 @@
 package com.example.it32007telegram.services;
 
+import com.example.it32007telegram.models.entities.users.User;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -21,6 +23,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
     private String token;
 
     private final TelegramService telegramService;
+    private final EventService eventService;
 
     @Override
     public String getBotUsername() {
@@ -52,7 +55,15 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 execute(telegramService.sendChoosingActionButtons(callbackQuery));
             }
             if(callbackData.startsWith("action-")){
-                execute(telegramService.makeMainAction(update));
+                String callbackLang = callbackQuery.getData().substring(7);
+                if(callbackLang.startsWith("1")){
+                    List<Object> objs = telegramService.createCommandReceived(callbackQuery);
+                    Integer messageId = execute((SendMessage) objs.get(0)).getMessageId();
+                    eventService.createEvent((User) objs.get(1), Long.valueOf(messageId));
+                }
+                else{
+                    execute(telegramService.makeMainAction(update));
+                }
             }
             if(callbackData.startsWith("city-")) {
                 execute(telegramService.chooseCity(update));
