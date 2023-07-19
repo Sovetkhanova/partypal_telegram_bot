@@ -60,8 +60,8 @@ public class User extends BaseEntity {
             inverseJoinColumns = {@JoinColumn(name = "role_id")},
             uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "role_id"})}
     )
-    @ToString.Exclude
-    private Set<Role> roles = new HashSet<>();
+
+    private Boolean isCurrentRoleCreator;
 
     private String lang;
 

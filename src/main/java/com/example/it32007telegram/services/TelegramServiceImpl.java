@@ -207,6 +207,8 @@ public class TelegramServiceImpl implements TelegramService  {
                 return messageSource.getMessage(code, null, new Locale("kz", "KZ"));
             case "en":
                 return messageSource.getMessage(code, null, Locale.ENGLISH);
+            case "global":
+                return messageSource.getMessage(code, null, Locale.getDefault());
             default:
                 return messageSource.getMessage(code, null, new Locale("ru", "RU"));
         }
@@ -269,147 +271,17 @@ public class TelegramServiceImpl implements TelegramService  {
         return createMessage(callbackQuery.getMessage(), answer, false);
     }
 
-    private SendMessage getCategories(CallbackQuery callbackQuery){
-        Message message = callbackQuery.getMessage();
-        List<String> categories = new ArrayList<>();
-        List<Category> categoryList = categoryRepository.findAll();
-        categoryList.forEach(category -> categories.add(category.getName()));
-        SendMessage sendMessage = createMessage(message, "Выберите категорию: ", false);
-        KeyboardRow keyboardFirstRow = new KeyboardRow();
-        keyboardFirstRow.add("\uD83C\uDFCB" + categories.get(0));
-        keyboardFirstRow.add("\uD83C\uDFA8" + categories.get(1));
-        keyboardFirstRow.add("\uD83C\uDF89" + categories.get(2));
-        KeyboardRow keyboardSecondRow = new KeyboardRow();
-        keyboardSecondRow.add("\uD83C\uDFA5" + categories.get(3));
-        keyboardSecondRow.add("\uD83C\uDF72" + categories.get(4));
-        keyboardSecondRow.add("\uD83D\uDCD6" + categories.get(5));
-        return createButtons(sendMessage, keyboardFirstRow, keyboardSecondRow);
-    }
-
     @Override
     public SendMessage createCommandReceived(CallbackQuery callbackQuery) {
-        return getCategories(callbackQuery);
+        User user = userService.getOrCreateUser(callbackQuery.getFrom());
+        return createMessage(callbackQuery.getMessage(), getTextByLanguage(user.getLang(), "EVENT.NAME"), true);
     }
-
-    /*@Override
-    public SendMessage editCommandReceived(Update update) {
-        List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
-        List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
-        Field[] fields = Event.class.getDeclaredFields();
-        for (Field field : fields) {
-            field.setAccessible(true);
-            InlineKeyboardButton button = new InlineKeyboardButton(field.getName());
-            button.setCallbackData(field.getName() + "Edit-");
-            inlineKeyboardButtons.add(button);
-        }
-        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
-        inlineButtons.add(inlineKeyboardButtons);
-        keyboardMarkup.setKeyboard(inlineButtons);
-
-        SendMessage message = createMessage(update.getMessage(), "Выберите что хотите изменить", false);
-        message.setReplyMarkup(keyboardMarkup);
-        return message;
-    }*/
-
 
     @Override
     public SendMessage searchCommandReceived(CallbackQuery callbackQuery) {
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
         return cityChoose(callbackQuery.getMessage(), user.getLang());
     }
-
-
-/*
-    @Override
-    public void processDefaultStates(Update update) {
-        Optional<User> userOptional = userDao.findByUsername(message.getChat().getUserName());
-        User user;
-        user = userOptional.orElseGet(() -> createUser(message));
-        Optional<Event> eventOptional = eventRepository.findByTgId(message.getChatId());
-        if(eventOptional.isPresent()){
-            Event event = eventOptional.get();
-            switch (user.getState()){
-                case "requiredTitle":
-                    event.setName(message.getText());
-                    user.setState("requiredDescription");
-                    userRepository.save(user);
-                    eventRepository.save(event);
-                    String answer = "Напишите описание мероприятий";
-                    try {
-                        execute(createMessage(message, answer));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                case "requiredDescription":
-                    event.setDescription(message.getText());
-                    user.setState("requiredCountry");
-                    userRepository.save(user);
-                    eventRepository.save(event);
-                    countryChoose(message);
-                    break;
-                case "requiredCountry":
-                    event.setCountry(countryRepository.findByName(message.getText().substring(1)));
-                    user.setState("requiredCity");
-                    userRepository.save(user);
-                    eventRepository.save(event);
-                    String answerCountry = "Введите город";
-                    try {
-                        execute(createMessage(message, answerCountry));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                case "requiredCity":
-                    Optional<City> cityOptional = cityRepository.findByCountryIdAndName(event.getCountry().getId(), message.getText());
-                    City city;
-                    city = cityOptional.orElseGet(() -> City.builder()
-                            .country(event.getCountry())
-                            .name(message.getText())
-                            .build());
-                    cityRepository.save(city);
-                    event.setCity(city);
-                    user.setState("requiredPlace");
-                    userRepository.save(user);
-                    eventRepository.save(event);
-                    String answerCity = "Введите место";
-                    try {
-                        execute(createMessage(message, answerCity));
-                    } catch (TelegramApiException e) {
-                        e.printStackTrace();
-                    }
-                    break;
-                case "requiredPlace":
-                    event.setPlace(message.getText());
-                    user.setState("requiredDate");
-                    userRepository.save(user);
-                    eventRepository.save(event);
-                    sendDateSelectionKeyboard(message.getChatId());
-                    break;
-                case "requiredDate":
-                    event.setDate(Date.valueOf(message.getText()));
-                    user.setState("requiredTime");
-                    userRepository.save(user);
-                    eventRepository.save(event);
-                    sendTimeSelectionKeyboard(message.getChatId());
-                    break;
-                case "requiredTime":
-                    event.setTime(Time.valueOf(message.getText()));
-                    user.setState("requiredRequirements");
-                    userRepository.save(user);
-                    eventRepository.save(event);
-                    break;
-                case "requiredRequirements":
-                    event.setRequirement(message.getText());
-                    user.setState("eventCreated");
-                    userRepository.save(user);
-                    eventRepository.save(event);
-                    break;
-                default:
-                    break;
-            }
-        }
-    }*/
 
     private SendMessage createMessage(Message message, String answer, Boolean isReplyMessage){
         SendMessage sendMessage = new SendMessage();
@@ -521,7 +393,7 @@ public class TelegramServiceImpl implements TelegramService  {
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         inlineButtons.add(inlineKeyboardButtons);
         keyboardMarkup.setKeyboard(inlineButtons);
-        SendMessage message = createMessage(callbackQuery.getMessage(), "AVAILABLE.EVENTS", false);
+        SendMessage message = createMessage(callbackQuery.getMessage(), getTextByLanguage("global", "EVENTS.LIST"), false);
         message.setReplyMarkup(keyboardMarkup);
         return message;
     }
