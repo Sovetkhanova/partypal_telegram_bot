@@ -21,6 +21,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
     private String token;
 
     private final TelegramService telegramService;
+    private final GeocoderService geocoderService;
 
     @Override
     public String getBotUsername() {
@@ -48,47 +49,46 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 execute(telegramService.getEvent(update));
             }
             if (callbackData.startsWith("nameEdit-")) {
-             //   execute(telegramService.editEventTitle(update));
+            }
+            if(callbackData.startsWith("placeLocation-")){
+                if(message.hasLocation()){
+                    System.out.println(geocoderService.getPlace(message.getLocation().getLongitude(),message.getLocation().getLatitude()));
+                }
+            }
+            if(callbackData.startsWith("lang-")){
+                execute(telegramService.chooseLanguage(update));
+                execute(telegramService.sendChoosingActionButtons(callbackQuery));
+            }
+            if(callbackData.startsWith("action-")){
+                execute(telegramService.makeMainAction(update));
+            }
+            if(callbackData.startsWith("city-")) {
+                execute(telegramService.chooseCity(update));
+            }
+            if(callbackData.startsWith("category-")){
+                execute(telegramService.chooseCategory(update));
             }
         }
         if (message != null && message.hasText()) {
             String messageText = message.getText();
             switch (messageText) {
                 case "/start":
-                    execute(telegramService.startCommandReceived(update));
+                    execute(telegramService.startCommandReceived(message));
                     break;
                 case "\uD83D\uDD8B Создать":
-                    execute(telegramService.createCommandReceived(update));
+                 //   execute(telegramService.createCommandReceived(update));
                     break;
                 case "\uD83D\uDD8B Редактировать":
                     execute(telegramService.editCommandReceived(update));
                     break;
-                case "\uD83D\uDCCB Мои мероприятия":
-                    execute(telegramService.listCommandReceived(update));
-                    break;
+             //   case "\uD83D\uDCCB Мои мероприятия":
+              //      execute(telegramService.listCommandReceived(update));
+                //    break;
                 case "\uD83D\uDD0D Искать":
-                    execute(telegramService.searchCommandReceived(update));
-                    break;
-                    /*    case "\uD83C\uDFCBСпорт и активности":
-                    telegramService.createEvent(Category.RoleCode.Sport, message);
-                    break;
-                case "\uD83C\uDFA8Культура и искусство":
-                    telegramService.createEvent(Category.RoleCode.Culture, message);
-                    break;
-                case "\uD83C\uDF89Вечеринки, встречи, сетевые мероприятия и другие события":
-                    telegramService.createEvent(Category.RoleCode.Party, message);
-                    break;
-                case "\uD83C\uDFA5Фильмы и кино":
-                    telegramService.createEvent(Category.RoleCode.Cinema, message);
-                    break;
-                case "\uD83C\uDF72Кулинария и рестораны":
-                    telegramService.createEvent(Category.RoleCode.Restaurant, message);
-                    break;
-                case "\uD83D\uDCD6Образование и лекции":
-                    telegramService.createEvent(Category.RoleCode.Education, message);
+              //      execute(telegramService.searchCommandReceived(update));
                     break;
                 default:
-                    telegramService.processDefaultStates(update);*/
+                //  telegramService.processDefaultStates(update);
             }
         }
     }

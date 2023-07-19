@@ -1,15 +1,15 @@
 package com.example.it32007telegram.services;
 
-import com.example.it32007telegram.daos.UserDao;
 import com.example.it32007telegram.daos.repositories.CategoryRepository;
-import com.example.it32007telegram.daos.repositories.CountryRepository;
+import com.example.it32007telegram.daos.repositories.CityRepository;
 import com.example.it32007telegram.daos.repositories.EventRepository;
 import com.example.it32007telegram.models.entities.Event;
 import com.example.it32007telegram.models.entities.base.Category;
 import com.example.it32007telegram.models.entities.base.City;
-import com.example.it32007telegram.models.entities.base.Country;
 import com.example.it32007telegram.models.entities.users.User;
+import com.example.it32007telegram.models.enums.Lang;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -25,103 +25,236 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TelegramServiceImpl implements TelegramService  {
     private final CategoryRepository categoryRepository;
-    private final CountryRepository countryRepository;
     private final EventRepository eventRepository;
     private final EventService eventService;
-    private final UserDao userDao;
+    private final UserService userService;
 
+    private final MessageSource messageSource;
+    private final TranslatorService translatorService;
+    private final CityRepository cityRepository;
 
     @Override
-    public SendMessage startCommandReceived(Update update) {
-        Message message = update.getMessage();
-        String answer = "Привет, " + message.getChat().getFirstName() + ", добро пожаловать!" + "\n" +
-                "Здесь вы найдете идеальный способ организовать встречу с новыми друзьями для похода в кино или незабываемого приключения в горах. \uD83C\uDF89️\uD83C\uDFA5" + "\n\n" +
-                "Наш бот предоставит вам удобные инструменты, чтобы сделать процесс планирования и координации простым и веселым. Вы сможете предложить свои идеи, узнать предпочтения других участников и создать событие, которое будет подходить каждому. \uD83E\uDD1D\uD83D\uDCA1\uD83D\uDDD3️\n" +
-                "\n" +
-                "Откройте новые возможности для общения, обмена идеями, а главное, создайте незабываемые моменты, которые останутся в памяти на всю жизнь. Наш бот будет рядом на каждом шагу, чтобы помочь вам сделать ваше приключение неповторимым и запоминающимся. \uD83C\uDF1F\uD83C\uDF08\n" +
-                "\n" +
-                "Не теряйте время на нескончаемую переписку и сомнения – наш бот облегчит все процессы, связанные с планированием. Отправьте приглашения, проголосуйте за лучшие варианты, обсудите детали и ожидайте встречи с новыми знакомыми, готовыми поделиться увлечениями и радостью от совместных приключений. \uD83D\uDC8C\uD83D\uDCC6\uD83E\uDD29\n" +
-                "\n" +
-                "Готовы ли вы начать увлекательное путешествие? Добро пожаловать в мир возможностей и новых знакомств! \uD83D\uDE80\uD83C\uDF0D\uD83E\uDD73" + "\n";
-        SendMessage sendMessage = createMessage(message, answer);
-        KeyboardRow keyboardFirstRow = new KeyboardRow();
-        keyboardFirstRow.add("\uD83D\uDD8B Создать");
-        keyboardFirstRow.add("\uD83D\uDD8B Редактировать");
-        KeyboardRow keyboardSecondRow = new KeyboardRow();
-        keyboardSecondRow.add("\uD83D\uDD0D Искать");
-        keyboardSecondRow.add("\uD83D\uDCCB Мои мероприятия");
-        return createButtons(sendMessage, keyboardFirstRow, keyboardSecondRow);
+    public SendMessage startCommandReceived(Message message) {
+        return chooseLanguageCommandReceived(message);
     }
+
     @Override
-    public SendMessage listCommandReceived(Update update) {
-        org.telegram.telegrambots.meta.api.objects.User userTg = update.getMessage().getFrom();
-        Optional<User> userOptional = userDao.findByUsername(userTg.getUserName());
-        User user = userOptional.orElseGet(() -> userDao.createUser(userTg));
-        Map<String, List<Event>> events = eventService.getUserEvents(user);
+    public SendMessage chooseLanguageCommandReceived(Message message) {
         List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
         List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
-        List<InlineKeyboardButton> inlineKeyboardButtonss = new ArrayList<>();
-        InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton("Мои мероприятия");
-        inlineKeyboardButton.setCallbackData("get_event");
-        inlineKeyboardButtons.add(inlineKeyboardButton);
+        List<String> langList = new ArrayList<>();
+        langList.add(getTextByLanguage("kk", "lang.KZ"));
+        langList.add(getTextByLanguage("ru", "lang.RU"));
+        langList.add(getTextByLanguage("en", "lang.EN"));
+        for (String lang : langList) {
+            InlineKeyboardButton button = new InlineKeyboardButton(lang);
+            button.setCallbackData("lang-" + lang);
+            inlineKeyboardButtons.add(button);
+        }
+
+        inlineButtons.add(inlineKeyboardButtons);
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(inlineButtons);
+
+        SendMessage messageReturn = createMessage(message, "Выберите язык", true);
+        messageReturn.setReplyMarkup(keyboardMarkup);
+        return messageReturn;
+    }
+
+    @Override
+    public SendMessage chooseLanguage(Update update) {
+        CallbackQuery callbackQuery = update.getCallbackQuery();
+        User user = userService.getOrCreateUser(callbackQuery.getFrom());
+        String callbackLang = callbackQuery.getData().substring(5);
+        if(callbackLang.contains("Қазақша")){
+            user.setLang("kk");
+        }
+        if(callbackLang.contains("Русский")){
+            user.setLang("ru");
+        }
+        if(callbackLang.contains("English")){
+            user.setLang("en");
+        }
+        userService.saveUser(user);
+        return sendGreetingMessage(update.getCallbackQuery().getMessage(), user.getLang());
+    }
+
+    @Override
+    public SendMessage sendGreetingMessage(Message message, String lang) {
+        String answer;
+        switch (lang){
+            case "kk":
+                answer = getTextByLanguage("kk", "GREETING");
+                break;
+            case "en":
+                answer = getTextByLanguage("en", "GREETING");
+                break;
+            default:
+                answer = getTextByLanguage("ru", "GREETING");
+                break;
+        }
+        return createMessage(message, answer, false);
+    }
+
+    @Override
+    public SendMessage sendChoosingActionButtons(CallbackQuery callbackQuery) {
+        List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
+        List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
+        List<String> mainActionsList = new ArrayList<>();
+        User user = userService.getOrCreateUser(callbackQuery.getFrom());
+        String answer;
+        switch (user.getLang()){
+            case "kk":
+                mainActionsList.add("1. " + getTextByLanguage("kk", "EVENT.CREATE"));
+                mainActionsList.add("2. " + getTextByLanguage("kk", "EVENT.SEARCH"));
+                mainActionsList.add("3. " + getTextByLanguage("kk", "EVENT.MINE"));
+                answer = getTextByLanguage("kk", "EVENT.CHOOSE.MAIN.ACTION");
+                break;
+            case "en":
+                mainActionsList.add("1. " + getTextByLanguage("en", "EVENT.CREATE"));
+                mainActionsList.add("2. " + getTextByLanguage("en", "EVENT.SEARCH"));
+                mainActionsList.add("3. " + getTextByLanguage("en", "EVENT.MINE"));
+                answer = getTextByLanguage("en", "EVENT.CHOOSE.MAIN.ACTION");
+                break;
+            default:
+                mainActionsList.add("1. " + getTextByLanguage("ru", "EVENT.CREATE"));
+                mainActionsList.add("2. " + getTextByLanguage("ru", "EVENT.SEARCH"));
+                mainActionsList.add("3. " + getTextByLanguage("ru", "EVENT.MINE"));
+                answer = getTextByLanguage("ru", "EVENT.CHOOSE.MAIN.ACTION");
+                break;
+        }
+        for (String action : mainActionsList) {
+            InlineKeyboardButton button = new InlineKeyboardButton(action);
+            button.setCallbackData("action-" + action);
+            inlineKeyboardButtons.add(button);
+        }
+        inlineButtons.add(inlineKeyboardButtons);
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(inlineButtons);
+        SendMessage messageReturn = createMessage(callbackQuery.getMessage(), answer, false);
+        messageReturn.setReplyMarkup(keyboardMarkup);
+        return messageReturn;
+    }
+
+    @Override
+    public SendMessage makeMainAction(Update update) {
+        CallbackQuery callbackQuery = update.getCallbackQuery();
+        String callbackLang = callbackQuery.getData().substring(7);
+        if(callbackLang.startsWith("1")){
+            return createCommandReceived(callbackQuery);
+        }
+        if(callbackLang.startsWith("2")){
+            return searchCommandReceived(callbackQuery);
+        }
+        if(callbackLang.startsWith("3")){
+            return listCommandReceived(callbackQuery);
+        }
+        else return sendChoosingActionButtons(callbackQuery);
+    }
+
+    @Override
+    public SendMessage listCommandReceived(CallbackQuery callbackQuery) {
+        org.telegram.telegrambots.meta.api.objects.User userTg = callbackQuery.getFrom();
+        User user = userService.getOrCreateUser(userTg);
+        Map<String, List<Event>> events = eventService.getUserEvents(user);
+        List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
+        List<InlineKeyboardButton> inlineKeyboardMineButtons = new ArrayList<>();
+        List<InlineKeyboardButton> inlineKeyboardEnrolledButtons = new ArrayList<>();
+
+        List<String> buttonsTexts = new ArrayList<>();
+        buttonsTexts.add(getTextByLanguage(user.getLang(), "MINE.EVENTS"));
+        buttonsTexts.add(getTextByLanguage(user.getLang(), "ENROLLED.EVENTS"));
+        buttonsTexts.add(getTextByLanguage(user.getLang(), "CHOOSE.EVENT"));
+        InlineKeyboardButton inlineKeyboardMineButton = new InlineKeyboardButton(buttonsTexts.get(0));
+        inlineKeyboardMineButton.setCallbackData("get_event");
+        inlineKeyboardMineButtons.add(inlineKeyboardMineButton);
 
         for (Event eventCard : events.get("created")) {
             String buttonText = eventCard.getId() + ". " + eventCard.getName();
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
             button.setCallbackData("event-" + eventCard.getId());
-            inlineKeyboardButtons.add(button);
+            inlineKeyboardMineButtons.add(button);
         }
-        InlineKeyboardButton inlineKeyboardButtonn = new InlineKeyboardButton("Зарегистрированные");
-        inlineKeyboardButtonn.setCallbackData("get_event");
-        inlineKeyboardButtonss.add(inlineKeyboardButtonn);
+        InlineKeyboardButton inlineKeyboardEnrolledButton = new InlineKeyboardButton(buttonsTexts.get(1));
+        inlineKeyboardEnrolledButton.setCallbackData("get_event");
+        inlineKeyboardEnrolledButtons.add(inlineKeyboardEnrolledButton);
         for (Event eventCard : events.get("enrolled")) {
-            String buttonText = eventCard.getId() + ". " + eventCard.getName();
+            User createdUser = eventCard.getCreatedUser();
+            String translatedEventName = ((createdUser != null && createdUser.getLang().equals(user.getLang())) ? eventCard.getName() : translatorService.translateText(Lang.valueOf(user.getLang()), eventCard.getName()));
+            String buttonText = eventCard.getId() + ". " + translatedEventName;
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
             button.setCallbackData("event-" + eventCard.getId());
-            inlineKeyboardButtonss.add(button);
+            inlineKeyboardEnrolledButtons.add(button);
         }
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
-        inlineButtons.add(inlineKeyboardButtons);
-        inlineButtons.add(inlineKeyboardButtonss);
+        inlineButtons.add(inlineKeyboardMineButtons);
+        inlineButtons.add(inlineKeyboardEnrolledButtons);
         keyboardMarkup.setKeyboard(inlineButtons);
 
-        SendMessage message = createMessage(update.getMessage(), "Выберите мероприятие");
+        SendMessage message = createMessage(callbackQuery.getMessage(), buttonsTexts.get(2), false);
         message.setReplyMarkup(keyboardMarkup);
         return message;
     }
 
-    private String createEventCardsMessage(List<Event> eventCards) {
+    private String getTextByLanguage(String lang, String code){
+        switch (lang){
+            case "kk":
+                return messageSource.getMessage(code, null, new Locale("kz", "KZ"));
+            case "en":
+                return messageSource.getMessage(code, null, Locale.ENGLISH);
+            default:
+                return messageSource.getMessage(code, null, new Locale("ru", "RU"));
+        }
+    }
+
+    private String createEventCardsMessage(String lang, List<Event> eventCards) {
         StringBuilder messageText = new StringBuilder();
+        List<String> buttonsTexts = new ArrayList<>();
+        buttonsTexts.add(getTextByLanguage(lang, "EVENT.DESCRIPTION"));
+        buttonsTexts.add(getTextByLanguage(lang, "EVENT.REQUIREMENTS"));
+        buttonsTexts.add(getTextByLanguage(lang, "EVENT.CITY"));
+        buttonsTexts.add(getTextByLanguage(lang, "EVENT.PLACE"));
+        buttonsTexts.add(getTextByLanguage(lang, "EVENT.DATE"));
+        buttonsTexts.add(getTextByLanguage(lang, "EVENT.TIME"));
+        buttonsTexts.add(getTextByLanguage(lang, "EVENT.CREATED.BY"));
         for (Event eventCard : eventCards) {
-            messageText.append("Название: ").append(eventCard.getName()).append("\n");
-            messageText.append("Описание: ").append(eventCard.getDescription()).append("\n");
-            messageText.append("Дата: ").append(eventCard.getDate()).append("\n");
-            messageText.append("Время: ").append(eventCard.getTime()).append("\n");
+            boolean isNeedToTranslate = ((eventCard.getCreatedUser() == null) || ((eventCard.getCreatedUser() != null) && !eventCard.getCreatedUser().getLang().equals(lang)));
+            messageText.append("*").append((!isNeedToTranslate) ? eventCard.getName() : translatorService.translateText(Lang.valueOf(lang), eventCard.getName())).append("*").append("\n");
+            messageText.append("*").append(buttonsTexts.get(0)).append(":* ").append(eventCard.getDescription()).append("\n");
+            String requirement = eventCard.getRequirement();
+            if (requirement != null) {
+                messageText.append("*").append(buttonsTexts.get(1)).append(":* ").append(eventCard.getRequirement()).append("\n");
+            }
+            messageText.append("\n----------------------\n\n");
             City city = eventCard.getCity();
             if (city != null) {
-                messageText.append("Город: ").append(city.getName()).append("\n");
+                String tempLang = lang;
+                if(lang.equals("kk")){
+                    tempLang = "kz";
+                }
+                messageText.append("*").append(buttonsTexts.get(2)).append(":* ").append(eventCard.getCity().getLanguages().get(tempLang)).append("\n");
             }
             String place = eventCard.getPlace();
             if (place != null) {
-                messageText.append("Место: ").append(place).append("\n");
+                messageText.append("*").append(buttonsTexts.get(3)).append(":* ").append((!isNeedToTranslate) ? eventCard.getName() : translatorService.translateText(Lang.valueOf(lang), eventCard.getPlace())).append("\n");
             }
-            String requirement = eventCard.getRequirement();
-            if (requirement != null) {
-                messageText.append("Требования: ").append(requirement).append("\n");
-            }
+            messageText.append("\n----------------------\n\n");
+            messageText.append("*").append(buttonsTexts.get(4)).append(":* ").append(eventCard.getDate()).append("\n");
+            messageText.append("*").append(buttonsTexts.get(5)).append(":* ").append(eventCard.getTime()).append("\n");
+            messageText.append("\n----------------------\n\n");
             User createdUser = eventCard.getCreatedUser();
             if (createdUser != null) {
-                messageText.append("Ответственный: ").append(createdUser.getUsername()).append("\n");
+                messageText.append("*").append(buttonsTexts.get(6)).append(":* ").append("@").append(eventCard.getCreatedUser().getTelegramUsername()).append("\n");
             }
-            messageText.append("\n");
         }
-        return String.valueOf(messageText);
+        return messageText.toString();
     }
 
     @Override
@@ -129,22 +262,21 @@ public class TelegramServiceImpl implements TelegramService  {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackData = callbackQuery.getData();
         String id = callbackData.substring(6);
-
         Optional<Event> eventOptional = eventRepository.findById(Long.valueOf(id));
         String answer = "";
         if(eventOptional.isPresent()){
-            answer = createEventCardsMessage(Collections.singletonList(eventOptional.get()));
+            User user = userService.getOrCreateUser(callbackQuery.getFrom());
+            answer = createEventCardsMessage(user.getLang(), Collections.singletonList(eventOptional.get()));
         }
-        return createMessage(update.getCallbackQuery().getMessage(), answer);
+        return createMessage(callbackQuery.getMessage(), answer, false);
     }
 
-    @Override
-    public SendMessage createCommandReceived(Update update) {
-        Message message = update.getMessage();
+    private SendMessage getCategories(CallbackQuery callbackQuery){
+        Message message = callbackQuery.getMessage();
         List<String> categories = new ArrayList<>();
         List<Category> categoryList = categoryRepository.findAll();
         categoryList.forEach(category -> categories.add(category.getName()));
-        SendMessage sendMessage = createMessage(message, "Выберите категорию: ");
+        SendMessage sendMessage = createMessage(message, "Выберите категорию: ", false);
         KeyboardRow keyboardFirstRow = new KeyboardRow();
         keyboardFirstRow.add("\uD83C\uDFCB" + categories.get(0));
         keyboardFirstRow.add("\uD83C\uDFA8" + categories.get(1));
@@ -154,6 +286,11 @@ public class TelegramServiceImpl implements TelegramService  {
         keyboardSecondRow.add("\uD83C\uDF72" + categories.get(4));
         keyboardSecondRow.add("\uD83D\uDCD6" + categories.get(5));
         return createButtons(sendMessage, keyboardFirstRow, keyboardSecondRow);
+    }
+
+    @Override
+    public SendMessage createCommandReceived(CallbackQuery callbackQuery) {
+        return getCategories(callbackQuery);
     }
 
     @Override
@@ -171,15 +308,16 @@ public class TelegramServiceImpl implements TelegramService  {
         inlineButtons.add(inlineKeyboardButtons);
         keyboardMarkup.setKeyboard(inlineButtons);
 
-        SendMessage message = createMessage(update.getMessage(), "Выберите что хотите изменить");
+        SendMessage message = createMessage(update.getMessage(), "Выберите что хотите изменить", false);
         message.setReplyMarkup(keyboardMarkup);
         return message;
     }
 
 
     @Override
-    public SendMessage searchCommandReceived(Update update) {
-        return null;
+    public SendMessage searchCommandReceived(CallbackQuery callbackQuery) {
+        User user = userService.getOrCreateUser(callbackQuery.getFrom());
+        return cityChoose(callbackQuery.getMessage(), user.getLang());
     }
 
 
@@ -275,11 +413,13 @@ public class TelegramServiceImpl implements TelegramService  {
         }
     }*/
 
-    private SendMessage createMessage(Message message, String answer){
+    private SendMessage createMessage(Message message, String answer, Boolean isReplyMessage){
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(message.getChatId().toString());
-        sendMessage.setReplyToMessageId(message.getMessageId());
+        if(isReplyMessage){
+            sendMessage.setReplyToMessageId(message.getMessageId());
+        }
         sendMessage.setText(answer);
         return sendMessage;
     }
@@ -297,15 +437,95 @@ public class TelegramServiceImpl implements TelegramService  {
         return sendMessage;
     }
 
-
-
-    private SendMessage countryChoose(Message message) {
-        List<Country> countries = countryRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
-        StringBuilder answer = new StringBuilder();
-        for (Country c : countries) {
-            answer.append("/").append(c.getName()).append("\n");
+    private SendMessage cityChoose(Message message, String lang) {
+        List<City> cities = cityRepository.findAll(Sort.by("id"));
+        List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        int buttonsPerRow = 3;
+        String langTemp = lang.equals("kk") ? "kz" : lang;
+        for (City city : cities) {
+            String cityName = city.getLanguages().get(langTemp);
+            String callbackData = "city-" + city.getId();
+            InlineKeyboardButton button = new InlineKeyboardButton(cityName);
+            button.setCallbackData(callbackData);
+            row.add(button);
+            if (row.size() == buttonsPerRow) {
+                inlineButtons.add(row);
+                row = new ArrayList<>();
+            }
         }
-        return createMessage(message, "Выберите страну: \n\n" + answer);
+        if (!row.isEmpty()) {
+            inlineButtons.add(row);
+        }
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(inlineButtons);
+        SendMessage sendMessage = createMessage(message, getTextByLanguage(lang, "CHOOSE.CITY"), false);
+        sendMessage.setReplyMarkup(keyboardMarkup);
+        return sendMessage;
+    }
+
+    public SendMessage chooseCity(Update update){
+        CallbackQuery callbackQuery = update.getCallbackQuery();
+        String callbackCityId = callbackQuery.getData().substring(5);
+        User user = userService.getOrCreateUser(callbackQuery.getFrom());
+        return chooseCategory(callbackQuery.getMessage(), user.getLang(), callbackCityId);
+    }
+
+    private SendMessage chooseCategory(Message message, String lang, String callbackCityId) {
+        List<Category> categories = categoryRepository.findAll(Sort.by("id"));
+        List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        int buttonsPerRow = 3;
+        String langTemp = lang.equals("kk") ? "kz" : lang;
+        for (int i = 0; i < categories.size() + 1; i++) {
+            String categoryName = (categories.size() <= i) ? "    " : categories.get(i).getLanguages().get(langTemp);
+            int temp = (categories.size() <= i) ? 0 : i + 1;
+            String callbackData = "category-" + temp + "city-" + callbackCityId;
+            InlineKeyboardButton button = new InlineKeyboardButton(categoryName);
+            button.setCallbackData(callbackData);
+            row.add(button);
+            if (row.size() == buttonsPerRow) {
+                inlineButtons.add(row);
+                row = new ArrayList<>();
+            }
+        }
+        if (!row.isEmpty()) {
+            inlineButtons.add(row);
+        }
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(inlineButtons);
+        SendMessage sendMessage = createMessage(message, getTextByLanguage(lang, "CHOOSE.CATEGORY"), false);
+        sendMessage.setReplyMarkup(keyboardMarkup);
+        return sendMessage;
+    }
+
+    public SendMessage chooseCategory(Update update){
+        CallbackQuery callbackQuery = update.getCallbackQuery();
+        String[] parts = callbackQuery.getData().split("-");
+        long categoryId = Long.parseLong(parts[1].replaceAll("\\D", ""));
+        long cityId = Long.parseLong(parts[2].replaceAll("\\D", ""));
+        if(cityId == 0) {
+           return searchCommandReceived(callbackQuery);
+        }
+        List<Event> eventList = eventRepository.findAllByCity_IdAndDateAfter(cityId, new Date());
+        List<Event> sortedEvents = eventList.stream()
+                .filter(event -> (categoryId == 0) || event.getCategory().getId().equals(categoryId))
+                .sorted(Comparator.comparing(Event::getDate).thenComparing(Event::getTime))
+                .collect(Collectors.toList());
+        List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
+        List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
+        for (Event eventCard : sortedEvents) {
+            String buttonText = eventCard.getId() + ". " + eventCard.getName() + " - " + eventCard.getDate();
+            InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
+            button.setCallbackData("event-" + eventCard.getId());
+            inlineKeyboardButtons.add(button);
+        }
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        inlineButtons.add(inlineKeyboardButtons);
+        keyboardMarkup.setKeyboard(inlineButtons);
+        SendMessage message = createMessage(callbackQuery.getMessage(), "AVAILABLE.EVENTS", false);
+        message.setReplyMarkup(keyboardMarkup);
+        return message;
     }
 
     private SendMessage sendDateSelectionKeyboard(Long chatId) {

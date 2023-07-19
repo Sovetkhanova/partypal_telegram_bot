@@ -18,16 +18,9 @@ import javax.persistence.Table;
 @Cacheable
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_ONLY)
-public class Category extends BaseEntityWithCode {
+public class Category extends BaseEntityWithCodeAndName {
 
-    @Column(name = "name")
-    private String name;
-
-    public Category() {
-
-    }
-
-    public enum RoleCode {
+    public enum Code {
         Cinema,
         Sport,
         Culture,

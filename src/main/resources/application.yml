@@ -33,5 +33,23 @@ bots:
     name: ${TELEGRAM_BOT_NAME:almaty_partypal_bot}
     token: ${TELEGRAM_BOT_TOKEN:5888573729:AAHkO5pn7EO2LgGs_-mTtBiEYuEAvjqCZZM}
     enabled: false
-translator:
-  server: ${TRANSLATOR_SERVER:https://rapidapi.com}
+eureka:
+  client:
+    enabled: ${EUREKA_CLIENT_ENABLED:false}
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL:http://localhost:8761/eureka/}
+    instance:
+    preferIpAddress: true
+    fetch-registry: true
+
+microservice-url:
+  translator:
+    url: ${MICROSERVICE-URL_TRANSLATOR_URL:http://localhost:8080}
+server:
+  port: 8888
+  tomcat:
+    uri-encoding: UTF-8
+geocoder:
+  url: ${GEOCODER_URL:https://geocode-maps.yandex.ru/1.x}
+  key: ${GEOCODER_KEY:35c221c7-b4ab-4ddc-8a80-9346adac26cf}
+  # application.properties

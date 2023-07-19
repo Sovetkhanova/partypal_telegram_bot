@@ -13,10 +13,7 @@ import javax.persistence.*;
 @ToString
 @RequiredArgsConstructor
 @Table(name = "city", schema = "partypal_location")
-public class City extends BaseEntity {
-
-    @JoinColumn(name = "name")
-    private String name;
+public class City extends BaseEntityWithCodeAndName {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JsonIgnore

@@ -60,6 +60,4 @@ public class Event extends BaseEntity {
     @Column(name = "tg_id")
     private Long tgId;
 
-    @Column(name = "is_mine")
-    private Boolean isMine;
 }

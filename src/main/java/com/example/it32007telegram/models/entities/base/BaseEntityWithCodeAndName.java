@@ -57,8 +57,4 @@ public abstract class BaseEntityWithCodeAndName extends BaseEntity {
         return name != null ? name.trim() : null;
     }
 
-    public void setCode(String code) {
-        this.code = code != null ? code.trim() : null;
-    }
-
 }

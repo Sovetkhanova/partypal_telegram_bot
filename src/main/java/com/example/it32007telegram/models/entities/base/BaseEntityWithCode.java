@@ -18,10 +18,6 @@ public class BaseEntityWithCode extends BaseEntity {
 
     private String code;
 
-    public void setCode(String code) {
-        this.code = code != null ? code.trim() : null;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

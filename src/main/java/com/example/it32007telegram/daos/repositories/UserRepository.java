@@ -9,5 +9,5 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends BaseEntityRepository<User> {
 
-    Optional<User> findByUsername(String userName);
+    Optional<User> findByTelegramId(Long telegramId);
 }

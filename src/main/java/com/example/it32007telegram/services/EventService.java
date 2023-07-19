@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface EventService {
-    SendMessage createEvent(Category.RoleCode role, Message message);
+    SendMessage createEvent(Category.Code role, Message message);
 
     Map<String, List<Event>> getUserEvents(User user);
 

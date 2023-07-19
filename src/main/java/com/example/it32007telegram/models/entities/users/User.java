@@ -3,6 +3,7 @@ package com.example.it32007telegram.models.entities.users;
 import com.example.it32007telegram.models.entities.UserEventLink;
 import com.example.it32007telegram.models.entities.base.BaseEntity;
 import com.example.it32007telegram.models.entities.base.City;
+import com.example.it32007telegram.models.enums.Lang;
 import lombok.*;
 import org.hibernate.Hibernate;
 
@@ -43,9 +44,6 @@ public class User extends BaseEntity {
     @ToString.Exclude
     private City city;
 
-    @Column(name = "telegram_username")
-    private String username;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gender_id")
     @ToString.Exclude
@@ -65,9 +63,13 @@ public class User extends BaseEntity {
     @ToString.Exclude
     private Set<Role> roles = new HashSet<>();
 
-    @Column(name = "state")
-    private String state;
+    private String lang;
 
+    @Column(name = "telegram_id")
+    private Long telegramId;
+
+    @Column(name = "telegram_username")
+    private String telegramUsername;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     @Builder.Default

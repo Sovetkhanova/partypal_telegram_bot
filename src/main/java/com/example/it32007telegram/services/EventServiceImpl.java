@@ -9,10 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,20 +19,18 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
     private final EventRepository eventRepository;
 
     @Override
-    public SendMessage createEvent(Category.RoleCode role, Message message) {
+    public SendMessage createEvent(Category.Code role, Message message) {
         return null;
     }
 
     @Override
     public Map<String, List<Event>> getUserEvents(User user) {
-        List<Event> eventList = eventRepository.findByCreatedUser_Id(user.getId());
-        List<Event> myEvents = eventList.stream()
-                .filter(Event::getIsMine)
-                .collect(Collectors.toList());
-        eventList.removeAll(myEvents);
+        List<Event> events = eventRepository.findAll();
+        List<Event> mineEvents = events.stream().filter(event -> (event.getCreatedUser() != null) && event.getCreatedUser().getId().equals(user.getId())).collect(Collectors.toList());
+        events.removeAll(mineEvents);
         Map<String, List<Event>> eventMap = new HashMap<>();
-        eventMap.put("created", myEvents);
-        eventMap.put("enrolled", eventList);
+        eventMap.put("created", mineEvents);
+        eventMap.put("enrolled", events);
         return eventMap;
     }
 
