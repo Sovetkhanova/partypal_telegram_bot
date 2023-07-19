@@ -21,7 +21,6 @@ public class TelegramBotService extends TelegramLongPollingBot {
     private String token;
 
     private final TelegramService telegramService;
-    private final GeocoderService geocoderService;
 
     @Override
     public String getBotUsername() {
@@ -48,13 +47,6 @@ public class TelegramBotService extends TelegramLongPollingBot {
             if (callbackData.startsWith("event-")) {
                 execute(telegramService.getEvent(update));
             }
-            if (callbackData.startsWith("nameEdit-")) {
-            }
-            if(callbackData.startsWith("placeLocation-")){
-                if(message.hasLocation()){
-                    System.out.println(geocoderService.getPlace(message.getLocation().getLongitude(),message.getLocation().getLatitude()));
-                }
-            }
             if(callbackData.startsWith("lang-")){
                 execute(telegramService.chooseLanguage(update));
                 execute(telegramService.sendChoosingActionButtons(callbackQuery));
@@ -71,24 +63,8 @@ public class TelegramBotService extends TelegramLongPollingBot {
         }
         if (message != null && message.hasText()) {
             String messageText = message.getText();
-            switch (messageText) {
-                case "/start":
-                    execute(telegramService.startCommandReceived(message));
-                    break;
-                case "\uD83D\uDD8B Создать":
-                 //   execute(telegramService.createCommandReceived(update));
-                    break;
-                case "\uD83D\uDD8B Редактировать":
-                    execute(telegramService.editCommandReceived(update));
-                    break;
-             //   case "\uD83D\uDCCB Мои мероприятия":
-              //      execute(telegramService.listCommandReceived(update));
-                //    break;
-                case "\uD83D\uDD0D Искать":
-              //      execute(telegramService.searchCommandReceived(update));
-                    break;
-                default:
-                //  telegramService.processDefaultStates(update);
+            if ("/start".equals(messageText)) {
+                execute(telegramService.startCommandReceived(message));
             }
         }
     }

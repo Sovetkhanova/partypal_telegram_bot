@@ -21,8 +21,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
-
-import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -293,7 +291,7 @@ public class TelegramServiceImpl implements TelegramService  {
         return getCategories(callbackQuery);
     }
 
-    @Override
+    /*@Override
     public SendMessage editCommandReceived(Update update) {
         List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
         List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
@@ -311,7 +309,7 @@ public class TelegramServiceImpl implements TelegramService  {
         SendMessage message = createMessage(update.getMessage(), "Выберите что хотите изменить", false);
         message.setReplyMarkup(keyboardMarkup);
         return message;
-    }
+    }*/
 
 
     @Override

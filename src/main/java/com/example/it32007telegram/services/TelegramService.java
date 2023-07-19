@@ -1,7 +1,6 @@
 package com.example.it32007telegram.services;
 
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -9,8 +8,6 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public interface TelegramService {
 
     SendMessage listCommandReceived(CallbackQuery callbackQuery);
-
-    SendMessage editCommandReceived(Update update);
 
     SendMessage startCommandReceived(Message message);
 

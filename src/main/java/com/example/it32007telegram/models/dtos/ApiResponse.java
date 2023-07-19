@@ -32,12 +32,4 @@ public class ApiResponse {
         return json;
     }
 
-    public JsonObject getHeaders() {
-        return headers;
-    }
-
-    public int getStatusCode() {
-        return statusCode;
-    }
-
 }

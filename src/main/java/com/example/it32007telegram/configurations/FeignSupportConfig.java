@@ -6,6 +6,7 @@ import feign.Response;
 import feign.Util;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
 import org.springframework.cloud.openfeign.support.ResponseEntityDecoder;
@@ -40,7 +41,7 @@ public class FeignSupportConfig {
         private static final org.springframework.http.MediaType UTF8_MEDIA_TYPE = new org.springframework.http.MediaType("text", "plain", StandardCharsets.UTF_8);
 
         @Override
-        protected org.springframework.http.MediaType getDefaultContentType(String dumy) {
+        protected org.springframework.http.MediaType getDefaultContentType(@NotNull String dumy) {
             return UTF8_MEDIA_TYPE;
         }
 
@@ -50,7 +51,7 @@ public class FeignSupportConfig {
         private final ObjectMapper objectMapper;
 
         public Utf8ResponseEntityDecoder(ObjectFactory<HttpMessageConverters> messageConverters) {
-            Decoder delegate = new ResponseEntityDecoder(new SpringDecoder(messageConverters));
+            new ResponseEntityDecoder(new SpringDecoder(messageConverters));
             this.objectMapper = new ObjectMapper().configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
         }
 

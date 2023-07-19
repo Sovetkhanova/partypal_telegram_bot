@@ -20,8 +20,8 @@ public class SpringConfiguration {
     @Bean("threadPoolTaskExecutor")
     public Executor asyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(88);
-        executor.setMaxPoolSize(200);
+        executor.setCorePoolSize(70);
+        executor.setMaxPoolSize(150);
         executor.setQueueCapacity(10000);
         executor.initialize();
         return executor;
