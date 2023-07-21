@@ -1,33 +1,18 @@
 package com.example.it32007telegram.models.entities.base;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
-import org.hibernate.Hibernate;
+import lombok.*;
 
 import javax.persistence.MappedSuperclass;
-import java.util.Objects;
+import javax.validation.constraints.NotBlank;
 
-@Getter
-@Setter
-@ToString
-@RequiredArgsConstructor
+@Data
 @MappedSuperclass
+@EqualsAndHashCode(callSuper = true)
 public class BaseEntityWithCode extends BaseEntity {
-
+    @NotBlank
     private String code;
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
-        BaseEntityWithCode that = (BaseEntityWithCode) o;
-        return getId() != null && Objects.equals(getId(), that.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
+    public void setCode(String code) {
+        this.code = code != null ? code.trim() : null;
     }
 }

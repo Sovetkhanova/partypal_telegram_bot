@@ -3,7 +3,7 @@ package com.example.it32007telegram.models.entities.users;
 import com.example.it32007telegram.models.entities.UserEventLink;
 import com.example.it32007telegram.models.entities.base.BaseEntity;
 import com.example.it32007telegram.models.entities.base.City;
-import com.example.it32007telegram.models.enums.Lang;
+import com.example.it32007telegram.models.entities.telegram.State;
 import lombok.*;
 import org.hibernate.Hibernate;
 
@@ -52,16 +52,10 @@ public class User extends BaseEntity {
     @Column(name = "last_login_date_time")
     private LocalDateTime lastLoginDateTime;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            schema = "partypal_user",
-            name = "user_role_link",
-            joinColumns = {@JoinColumn(name = "user_id")},
-            inverseJoinColumns = {@JoinColumn(name = "role_id")},
-            uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "role_id"})}
-    )
-
-    private Boolean isCurrentRoleCreator;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "current_state")
+    @ToString.Exclude
+    private State current_state;
 
     private String lang;
 

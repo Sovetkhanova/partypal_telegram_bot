@@ -50,26 +50,30 @@ public class TelegramBotService extends TelegramLongPollingBot {
             if (callbackData.startsWith("event-")) {
                 execute(telegramService.getEvent(update));
             }
-            if(callbackData.startsWith("lang-")){
+            if (callbackData.startsWith("lang-")) {
                 execute(telegramService.chooseLanguage(update));
                 execute(telegramService.sendChoosingActionButtons(callbackQuery));
             }
-            if(callbackData.startsWith("action-")){
+            if (callbackData.startsWith("action-")) {
                 String callbackLang = callbackQuery.getData().substring(7);
-                if(callbackLang.startsWith("1")){
+                if (callbackLang.startsWith("1")) {
                     List<Object> objs = telegramService.createCommandReceived(callbackQuery);
                     Integer messageId = execute((SendMessage) objs.get(0)).getMessageId();
                     eventService.createEvent((User) objs.get(1), Long.valueOf(messageId));
-                }
-                else{
+                } else {
                     execute(telegramService.makeMainAction(update));
                 }
             }
-            if(callbackData.startsWith("city-")) {
+            if (callbackData.startsWith("city-")) {
                 execute(telegramService.chooseCity(update));
             }
-            if(callbackData.startsWith("category-")){
-                execute(telegramService.chooseCategory(update));
+            if (callbackData.startsWith("category-")) {
+                if(callbackData.endsWith("null")){
+                    telegramService.handleDefaultMessages(update);
+                }
+                else {
+                    execute(telegramService.chooseCategory(update));
+                }
             }
         }
         if (message != null && message.hasText()) {
@@ -77,6 +81,12 @@ public class TelegramBotService extends TelegramLongPollingBot {
             if ("/start".equals(messageText)) {
                 execute(telegramService.startCommandReceived(message));
             }
+            if(!messageText.startsWith("/")){
+                execute(telegramService.handleDefaultMessages(update));
+            }
+        }
+        if(message != null && message.hasLocation()){
+            execute(telegramService.handleDefaultMessages(update));
         }
     }
 

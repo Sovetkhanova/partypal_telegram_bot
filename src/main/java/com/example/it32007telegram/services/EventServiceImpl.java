@@ -1,5 +1,6 @@
 package com.example.it32007telegram.services;
 
+import com.example.it32007telegram.daos.repositories.CountryRepository;
 import com.example.it32007telegram.daos.repositories.EventRepository;
 import com.example.it32007telegram.models.entities.Event;
 import com.example.it32007telegram.models.entities.users.User;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventRepository> implements EventService{
     private final EventRepository eventRepository;
+    private final CountryRepository countryRepository;
 
     @Override
     @Transactional
@@ -23,6 +25,7 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
         Event event = Event.builder()
                 .createdUser(user)
                 .tgId(messageId)
+                .country(countryRepository.findById(1L).orElse(null))
                 .build();
         return eventRepository.saveAndFlush(event);
     }
@@ -35,6 +38,12 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
     @Cacheable("event")
     public Optional<Event> findEventByMessageId(Long messageId){
         return eventRepository.findByTgId(messageId);
+    }
+
+    @Override
+    @Transactional
+    public void saveEvent(Event event) {
+        eventRepository.save(event);
     }
 
     @Override

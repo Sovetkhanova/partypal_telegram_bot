@@ -3,9 +3,11 @@ package com.example.it32007telegram.services;
 import com.example.it32007telegram.daos.repositories.CategoryRepository;
 import com.example.it32007telegram.daos.repositories.CityRepository;
 import com.example.it32007telegram.daos.repositories.EventRepository;
+import com.example.it32007telegram.daos.repositories.StateRepository;
 import com.example.it32007telegram.models.entities.Event;
 import com.example.it32007telegram.models.entities.base.Category;
 import com.example.it32007telegram.models.entities.base.City;
+import com.example.it32007telegram.models.entities.telegram.State;
 import com.example.it32007telegram.models.entities.users.User;
 import com.example.it32007telegram.models.enums.Lang;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.Location;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -21,6 +24,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+
+import java.sql.Time;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,10 +37,11 @@ public class TelegramServiceImpl implements TelegramService  {
     private final EventRepository eventRepository;
     private final EventService eventService;
     private final UserService userService;
-
     private final MessageSource messageSource;
     private final TranslatorService translatorService;
     private final CityRepository cityRepository;
+    private final StateRepository stateRepository;
+    private final GeocoderService geocoderService;
 
     @Override
     public SendMessage startCommandReceived(Message message) {
@@ -274,6 +280,8 @@ public class TelegramServiceImpl implements TelegramService  {
     @Override
     public List<Object> createCommandReceived(CallbackQuery callbackQuery) {
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
+        user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED.name()));
+        userService.saveUser(user);
         SendMessage message = enterEventName(callbackQuery.getMessage(), user.getLang());
         List <Object> objs = new ArrayList<>();
         objs.add(message);
@@ -282,37 +290,13 @@ public class TelegramServiceImpl implements TelegramService  {
     }
 
     private SendMessage enterEventName(Message message, String lang) {
-        return createMessage(message, getTextByLanguage(lang, "EVENT.NAME"), true);
+        return createMessage(message, getTextByLanguage(lang, "EVENT.NAME"), false);
     }
 
     @Override
     public SendMessage searchCommandReceived(CallbackQuery callbackQuery) {
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
         return cityChoose(callbackQuery.getMessage(), user.getLang());
-    }
-
-    private SendMessage createMessage(Message message, String answer, Boolean isReplyMessage){
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.enableMarkdown(true);
-        sendMessage.setChatId(message.getChatId().toString());
-        if(isReplyMessage){
-            sendMessage.setReplyToMessageId(message.getMessageId());
-        }
-        sendMessage.setText(answer);
-        return sendMessage;
-    }
-
-    private SendMessage createButtons(SendMessage sendMessage, KeyboardRow keyboardFirstRow, KeyboardRow keyboardSecondRow) {
-        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
-        replyKeyboardMarkup.setSelective(true);
-        replyKeyboardMarkup.setResizeKeyboard(true);
-        replyKeyboardMarkup.setOneTimeKeyboard(false);
-        List<KeyboardRow> keyboard = new ArrayList<>();
-        keyboard.add(keyboardFirstRow);
-        keyboard.add(keyboardSecondRow);
-        replyKeyboardMarkup.setKeyboard(keyboard);
-        sendMessage.setReplyMarkup(replyKeyboardMarkup);
-        return sendMessage;
     }
 
     private SendMessage cityChoose(Message message, String lang) {
@@ -346,7 +330,25 @@ public class TelegramServiceImpl implements TelegramService  {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackCityId = callbackQuery.getData().substring(5);
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
-        return chooseCategory(callbackQuery.getMessage(), user.getLang(), callbackCityId);
+        if(user.getCurrent_state().getCode().equals(State.StateCode.EVENT_CREATED_CATEGORY_SELECTED.name())){
+            Optional<Event> eventOptional = eventService.findEventByMessageId((long) (callbackQuery.getMessage().getMessageId() - 1));
+            if(eventOptional.isPresent()){
+                City city = cityRepository.findById(Long.valueOf(callbackCityId)).orElse(null);
+                Event event = eventOptional.get();
+                event.setCity(city);
+                event.setTgId(Long.valueOf(callbackQuery.getMessage().getMessageId()));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_CITY_SELECTED.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(eventOptional.get());
+                return createMessage(callbackQuery.getMessage(), getTextByLanguage(user.getLang(), "EVENT.CITY"), false);
+            }
+            else {
+                return handleDefaultMessages(update);
+            }
+        }
+        else{
+            return chooseCategory(callbackQuery.getMessage(), user.getLang(), callbackCityId);
+        }
     }
 
     private SendMessage chooseCategory(Message message, String lang, String callbackCityId) {
@@ -406,6 +408,125 @@ public class TelegramServiceImpl implements TelegramService  {
         return message;
     }
 
+    @Override
+    public SendMessage handleDefaultMessages(Update update) {
+        CallbackQuery callbackQuery = update.getCallbackQuery();
+        Message message = update.getMessage();
+        org.telegram.telegrambots.meta.api.objects.User userTemp;
+        if(callbackQuery != null && message == null){
+            message = callbackQuery.getMessage();
+            userTemp = callbackQuery.getFrom();
+        }
+        else {
+            userTemp = message.getFrom();
+        }
+        Optional<Event> eventOptional = eventService.findEventByMessageId((long) (message.getMessageId() - 1));
+        Event event;
+        if (eventOptional.isPresent()) {
+            event = eventOptional.get();
+        }
+        else {
+            return sendChoosingActionButtons(callbackQuery);
+        }
+        User user = userService.getOrCreateUser(userTemp);
+        State.StateCode state = State.StateCode.valueOf(user.getCurrent_state().getCode());
+        String messageText = message.getText();
+        String answer = " some ";
+        switch (state){
+            case EVENT_CREATED:
+                event.setName(messageText);
+                event.setTgId((long) (message.getMessageId() + 1));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_NAME_SELECTED.name()));
+                answer = getTextByLanguage(user.getLang(), "EVENT.DESCRIPTION");
+                break;
+            case EVENT_CREATED_NAME_SELECTED:
+                event.setDescription(messageText);
+                event.setTgId((long) (message.getMessageId() + 1));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_DESCRIPTION_SELECTED.name()));
+                answer = getTextByLanguage(user.getLang(), "EVENT.REQUIREMENTS");
+                break;
+            case EVENT_CREATED_DESCRIPTION_SELECTED:
+                event.setRequirement(messageText);
+                event.setTgId((long) (message.getMessageId()));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_REQUIREMENTS_SELECTED.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                return chooseCategory(message, user.getLang(), null);
+            case EVENT_CREATED_REQUIREMENTS_SELECTED:
+                Long categoryId = Long.parseLong(callbackQuery.getData().split("-")[1].replaceAll("\\D", ""));
+                event.setCategory(categoryRepository.findById(categoryId).orElse(null));
+                event.setTgId((long) (message.getMessageId()));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_CATEGORY_SELECTED.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                message.setForwardFrom(userTemp);
+                return cityChoose(message, user.getLang());
+            case EVENT_CREATED_CATEGORY_SELECTED:
+                return cityChoose(message, user.getLang());
+            case EVENT_CREATED_CITY_SELECTED:
+                if(message.hasLocation()){
+                    Location location = message.getLocation();
+                    event.setPlace(geocoderService.getPlace(location.getLongitude(), location.getLatitude()));
+                    event.setTgId((long) (message.getMessageId() + 1));
+                }
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_LOCATION_SELECTED.name()));
+                answer = getTextByLanguage(user.getLang(), "EVENT.DATE");
+                break;
+            case EVENT_CREATED_LOCATION_SELECTED:
+                event.setDate(java.sql.Date.valueOf(messageText));
+                event.setTgId((long) (message.getMessageId() + 1));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_DATE_SELECTED.name()));
+                answer = getTextByLanguage(user.getLang(), "EVENT.TIME");
+                break;
+            case EVENT_CREATED_DATE_SELECTED:
+                event.setTime(Time.valueOf(messageText));
+                event.setTgId((long) (message.getMessageId() + 1));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_TIME_SELECTED.name()));
+                answer = "created!";
+                break;
+            case EVENT_CREATED_TIME_SELECTED:
+                break;
+            case EVENT_UPDATE:
+                break;
+            case EVENT_UPDATE_CITY_SELECT:
+                break;
+            case EVENT_UPDATE_CATEGORY_SELECT:
+                break;
+            case EVENT_UPDATE_LOCATION_SELECT:
+                break;
+            case EVENT_UPDATE_NAME_SELECT:
+                break;
+            case EVENT_UPDATE_DESCRIPTION_SELECT:
+                break;
+            case EVENT_UPDATE_REQUIREMENTS_SELECT:
+                break;
+            case EVENT_UPDATE_DATE_SELECT:
+                break;
+            case EVENT_UPDATE_TIME_SELECT:
+                break;
+            case EVENT_DELETE:
+                break;
+            case MINE_EVENT_SELECTED:
+                break;
+            case ENROLLED_EVENT_SELECTED:
+                break;
+            case SOME_EVENT_SELECTED:
+                break;
+            case REMARK_CREATE:
+                break;
+            case ENROLL_CREATE:
+                break;
+            case REMARK_DELETE:
+                break;
+            default:
+                sendChoosingActionButtons(callbackQuery);
+                break;
+        }
+        userService.saveUser(user);
+        eventService.saveEvent(event);
+        return createMessage(message, answer, false);
+    }
+
     private SendMessage sendDateSelectionKeyboard(Long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         List<KeyboardRow> keyboardRows = new ArrayList<>();
@@ -445,6 +566,30 @@ public class TelegramServiceImpl implements TelegramService  {
         message.setText("Выберите время");
         message.setReplyMarkup(keyboardMarkup);
         return message;
+    }
+
+    private SendMessage createMessage(Message message, String answer, Boolean isReplyMessage){
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.enableMarkdown(true);
+        sendMessage.setChatId(message.getChatId().toString());
+        if(isReplyMessage){
+            sendMessage.setReplyToMessageId(message.getMessageId());
+        }
+        sendMessage.setText(answer);
+        return sendMessage;
+    }
+
+    private SendMessage createButtons(SendMessage sendMessage, KeyboardRow keyboardFirstRow, KeyboardRow keyboardSecondRow) {
+        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+        replyKeyboardMarkup.setSelective(true);
+        replyKeyboardMarkup.setResizeKeyboard(true);
+        replyKeyboardMarkup.setOneTimeKeyboard(false);
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        keyboard.add(keyboardFirstRow);
+        keyboard.add(keyboardSecondRow);
+        replyKeyboardMarkup.setKeyboard(keyboard);
+        sendMessage.setReplyMarkup(replyKeyboardMarkup);
+        return sendMessage;
     }
 
 }

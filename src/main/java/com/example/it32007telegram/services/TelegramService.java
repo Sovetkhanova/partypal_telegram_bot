@@ -31,4 +31,6 @@ public interface TelegramService {
     SendMessage chooseCity(Update update);
 
     SendMessage chooseCategory(Update update);
+
+    SendMessage handleDefaultMessages(Update update);
 }
