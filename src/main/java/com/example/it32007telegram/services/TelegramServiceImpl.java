@@ -25,14 +25,15 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
-import java.sql.Time;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class TelegramServiceImpl implements TelegramService  {
+public class TelegramServiceImpl implements TelegramService {
     private final CategoryRepository categoryRepository;
     private final EventRepository eventRepository;
     private final EventService eventService;
@@ -76,13 +77,13 @@ public class TelegramServiceImpl implements TelegramService  {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
         String callbackLang = callbackQuery.getData().substring(5);
-        if(callbackLang.contains("Қазақша")){
+        if (callbackLang.contains("Қазақша")) {
             user.setLang("kk");
         }
-        if(callbackLang.contains("Русский")){
+        if (callbackLang.contains("Русский")) {
             user.setLang("ru");
         }
-        if(callbackLang.contains("English")){
+        if (callbackLang.contains("English")) {
             user.setLang("en");
         }
         userService.saveUser(user);
@@ -92,7 +93,7 @@ public class TelegramServiceImpl implements TelegramService  {
     @Override
     public SendMessage sendGreetingMessage(Message message, String lang) {
         String answer;
-        switch (lang){
+        switch (lang) {
             case "kk":
                 answer = getTextByLanguage("kk", "GREETING");
                 break;
@@ -113,7 +114,7 @@ public class TelegramServiceImpl implements TelegramService  {
         List<String> mainActionsList = new ArrayList<>();
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
         String answer;
-        switch (user.getLang()){
+        switch (user.getLang()) {
             case "kk":
                 mainActionsList.add("1. " + getTextByLanguage("kk", "EVENT.CREATE"));
                 mainActionsList.add("2. " + getTextByLanguage("kk", "EVENT.SEARCH"));
@@ -150,16 +151,15 @@ public class TelegramServiceImpl implements TelegramService  {
     public SendMessage makeMainAction(Update update) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackLang = callbackQuery.getData().substring(7);
-        if(callbackLang.startsWith("1")){
+        if (callbackLang.startsWith("1")) {
             return (SendMessage) createCommandReceived(callbackQuery).get(0);
         }
-        if(callbackLang.startsWith("2")){
+        if (callbackLang.startsWith("2")) {
             return searchCommandReceived(callbackQuery);
         }
-        if(callbackLang.startsWith("3")){
+        if (callbackLang.startsWith("3")) {
             return listCommandReceived(callbackQuery);
-        }
-        else return sendChoosingActionButtons(callbackQuery);
+        } else return sendChoosingActionButtons(callbackQuery);
     }
 
     @Override
@@ -168,38 +168,33 @@ public class TelegramServiceImpl implements TelegramService  {
         User user = userService.getOrCreateUser(userTg);
         Map<String, List<Event>> events = eventService.getUserEvents(user);
         List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
-        List<InlineKeyboardButton> inlineKeyboardMineButtons = new ArrayList<>();
-        List<InlineKeyboardButton> inlineKeyboardEnrolledButtons = new ArrayList<>();
 
         List<String> buttonsTexts = new ArrayList<>();
         buttonsTexts.add(getTextByLanguage(user.getLang(), "MINE.EVENTS"));
         buttonsTexts.add(getTextByLanguage(user.getLang(), "ENROLLED.EVENTS"));
         buttonsTexts.add(getTextByLanguage(user.getLang(), "CHOOSE.EVENT"));
-        InlineKeyboardButton inlineKeyboardMineButton = new InlineKeyboardButton(buttonsTexts.get(0));
-        inlineKeyboardMineButton.setCallbackData("get_event");
-        inlineKeyboardMineButtons.add(inlineKeyboardMineButton);
 
         for (Event eventCard : events.get("created")) {
             String buttonText = eventCard.getId() + ". " + eventCard.getName();
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
             button.setCallbackData("event-" + eventCard.getId());
-            inlineKeyboardMineButtons.add(button);
+            List<InlineKeyboardButton> inlineKeyboardButtonsRow = new ArrayList<>();
+            inlineKeyboardButtonsRow.add(button);
+            inlineButtons.add(inlineKeyboardButtonsRow);
         }
-        InlineKeyboardButton inlineKeyboardEnrolledButton = new InlineKeyboardButton(buttonsTexts.get(1));
-        inlineKeyboardEnrolledButton.setCallbackData("get_event");
-        inlineKeyboardEnrolledButtons.add(inlineKeyboardEnrolledButton);
+
         for (Event eventCard : events.get("enrolled")) {
             User createdUser = eventCard.getCreatedUser();
             String translatedEventName = ((createdUser != null && createdUser.getLang().equals(user.getLang())) ? eventCard.getName() : translatorService.translateText(Lang.valueOf(user.getLang()), eventCard.getName()));
             String buttonText = eventCard.getId() + ". " + translatedEventName;
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
             button.setCallbackData("event-" + eventCard.getId());
-            inlineKeyboardEnrolledButtons.add(button);
+            List<InlineKeyboardButton> inlineKeyboardButtonsRow = new ArrayList<>();
+            inlineKeyboardButtonsRow.add(button);
+            inlineButtons.add(inlineKeyboardButtonsRow);
         }
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
-        inlineButtons.add(inlineKeyboardMineButtons);
-        inlineButtons.add(inlineKeyboardEnrolledButtons);
         keyboardMarkup.setKeyboard(inlineButtons);
 
         SendMessage message = createMessage(callbackQuery.getMessage(), buttonsTexts.get(2), false);
@@ -207,8 +202,8 @@ public class TelegramServiceImpl implements TelegramService  {
         return message;
     }
 
-    private String getTextByLanguage(String lang, String code){
-        switch (lang){
+    private String getTextByLanguage(String lang, String code) {
+        switch (lang) {
             case "kk":
                 return messageSource.getMessage(code, null, new Locale("kz", "KZ"));
             case "en":
@@ -242,14 +237,14 @@ public class TelegramServiceImpl implements TelegramService  {
             City city = eventCard.getCity();
             if (city != null) {
                 String tempLang = lang;
-                if(lang.equals("kk")){
+                if (lang.equals("kk")) {
                     tempLang = "kz";
                 }
                 messageText.append("*").append(buttonsTexts.get(2)).append(":* ").append(eventCard.getCity().getLanguages().get(tempLang)).append("\n");
             }
             String place = eventCard.getPlace();
             if (place != null) {
-                messageText.append("*").append(buttonsTexts.get(3)).append(":* ").append((!isNeedToTranslate) ? eventCard.getName() : translatorService.translateText(Lang.valueOf(lang), eventCard.getPlace())).append("\n");
+                messageText.append("*").append(buttonsTexts.get(3)).append(":* ").append((!isNeedToTranslate) ? eventCard.getPlace() : translatorService.translateText(Lang.valueOf(lang), eventCard.getPlace())).append("\n");
             }
             messageText.append("\n----------------------\n\n");
             messageText.append("*").append(buttonsTexts.get(4)).append(":* ").append(eventCard.getDate()).append("\n");
@@ -270,7 +265,7 @@ public class TelegramServiceImpl implements TelegramService  {
         String id = callbackData.substring(6);
         Optional<Event> eventOptional = eventRepository.findById(Long.valueOf(id));
         String answer = "";
-        if(eventOptional.isPresent()){
+        if (eventOptional.isPresent()) {
             User user = userService.getOrCreateUser(callbackQuery.getFrom());
             answer = createEventCardsMessage(user.getLang(), Collections.singletonList(eventOptional.get()));
         }
@@ -283,7 +278,7 @@ public class TelegramServiceImpl implements TelegramService  {
         user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED.name()));
         userService.saveUser(user);
         SendMessage message = enterEventName(callbackQuery.getMessage(), user.getLang());
-        List <Object> objs = new ArrayList<>();
+        List<Object> objs = new ArrayList<>();
         objs.add(message);
         objs.add(user);
         return objs;
@@ -326,13 +321,13 @@ public class TelegramServiceImpl implements TelegramService  {
         return sendMessage;
     }
 
-    public SendMessage chooseCity(Update update){
+    public SendMessage chooseCity(Update update) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackCityId = callbackQuery.getData().substring(5);
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
-        if(user.getCurrent_state().getCode().equals(State.StateCode.EVENT_CREATED_CATEGORY_SELECTED.name())){
+        if (user.getCurrent_state().getCode().equals(State.StateCode.EVENT_CREATED_CATEGORY_SELECTED.name())) {
             Optional<Event> eventOptional = eventService.findEventByMessageId((long) (callbackQuery.getMessage().getMessageId() - 1));
-            if(eventOptional.isPresent()){
+            if (eventOptional.isPresent()) {
                 City city = cityRepository.findById(Long.valueOf(callbackCityId)).orElse(null);
                 Event event = eventOptional.get();
                 event.setCity(city);
@@ -340,13 +335,11 @@ public class TelegramServiceImpl implements TelegramService  {
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_CITY_SELECTED.name()));
                 userService.saveUser(user);
                 eventService.saveEvent(eventOptional.get());
-                return createMessage(callbackQuery.getMessage(), getTextByLanguage(user.getLang(), "EVENT.CITY"), false);
-            }
-            else {
+                return createMessage(callbackQuery.getMessage(), getTextByLanguage(user.getLang(), "CHOOSE.LOCATION"), false);
+            } else {
                 return handleDefaultMessages(update);
             }
-        }
-        else{
+        } else {
             return chooseCategory(callbackQuery.getMessage(), user.getLang(), callbackCityId);
         }
     }
@@ -379,13 +372,13 @@ public class TelegramServiceImpl implements TelegramService  {
         return sendMessage;
     }
 
-    public SendMessage chooseCategory(Update update){
+    public SendMessage chooseCategory(Update update) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String[] parts = callbackQuery.getData().split("-");
         long categoryId = Long.parseLong(parts[1].replaceAll("\\D", ""));
         long cityId = Long.parseLong(parts[2].replaceAll("\\D", ""));
-        if(cityId == 0) {
-           return searchCommandReceived(callbackQuery);
+        if (cityId == 0) {
+            return searchCommandReceived(callbackQuery);
         }
         List<Event> eventList = eventRepository.findAllByCity_IdAndDateAfter(cityId, new Date());
         List<Event> sortedEvents = eventList.stream()
@@ -393,17 +386,17 @@ public class TelegramServiceImpl implements TelegramService  {
                 .sorted(Comparator.comparing(Event::getDate).thenComparing(Event::getTime))
                 .collect(Collectors.toList());
         List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
-        List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
         for (Event eventCard : sortedEvents) {
             String buttonText = eventCard.getId() + ". " + eventCard.getName() + " - " + eventCard.getDate();
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
             button.setCallbackData("event-" + eventCard.getId());
+            List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
             inlineKeyboardButtons.add(button);
+            inlineButtons.add(inlineKeyboardButtons);
         }
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
-        inlineButtons.add(inlineKeyboardButtons);
         keyboardMarkup.setKeyboard(inlineButtons);
-        SendMessage message = createMessage(callbackQuery.getMessage(), getTextByLanguage("global", "EVENTS.LIST"), false);
+        SendMessage message = createMessage(callbackQuery.getMessage(),"------------", false);
         message.setReplyMarkup(keyboardMarkup);
         return message;
     }
@@ -413,26 +406,28 @@ public class TelegramServiceImpl implements TelegramService  {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         Message message = update.getMessage();
         org.telegram.telegrambots.meta.api.objects.User userTemp;
-        if(callbackQuery != null && message == null){
+        if (callbackQuery != null && message == null) {
             message = callbackQuery.getMessage();
             userTemp = callbackQuery.getFrom();
-        }
-        else {
+        } else {
             userTemp = message.getFrom();
-        }
-        Optional<Event> eventOptional = eventService.findEventByMessageId((long) (message.getMessageId() - 1));
-        Event event;
-        if (eventOptional.isPresent()) {
-            event = eventOptional.get();
-        }
-        else {
-            return sendChoosingActionButtons(callbackQuery);
+            callbackQuery = new CallbackQuery();
+            callbackQuery.setMessage(message);
+            callbackQuery.setFrom(message.getFrom());
         }
         User user = userService.getOrCreateUser(userTemp);
         State.StateCode state = State.StateCode.valueOf(user.getCurrent_state().getCode());
+        Long id = (state.equals(State.StateCode.EVENT_CREATED_CITY_SELECTED)) ? 2L : 1L;
+        Optional<Event> eventOptional = eventService.findEventByMessageId(message.getMessageId() - id);
+        Event event;
+        if (eventOptional.isPresent()) {
+            event = eventOptional.get();
+        } else {
+            return sendChoosingActionButtons(callbackQuery);
+        }
         String messageText = message.getText();
         String answer = " some ";
-        switch (state){
+        switch (state) {
             case EVENT_CREATED:
                 event.setName(messageText);
                 event.setTgId((long) (message.getMessageId() + 1));
@@ -459,63 +454,51 @@ public class TelegramServiceImpl implements TelegramService  {
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_CATEGORY_SELECTED.name()));
                 userService.saveUser(user);
                 eventService.saveEvent(event);
-                message.setForwardFrom(userTemp);
                 return cityChoose(message, user.getLang());
             case EVENT_CREATED_CATEGORY_SELECTED:
                 return cityChoose(message, user.getLang());
             case EVENT_CREATED_CITY_SELECTED:
-                if(message.hasLocation()){
+                if (message.hasLocation()) {
                     Location location = message.getLocation();
                     event.setPlace(geocoderService.getPlace(location.getLongitude(), location.getLatitude()));
-                    event.setTgId((long) (message.getMessageId() + 1));
                 }
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_LOCATION_SELECTED.name()));
-                answer = getTextByLanguage(user.getLang(), "EVENT.DATE");
-                break;
+                event.setTgId((long) (message.getMessageId() + 1));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                return sendDateSelectionKeyboard(message.getChatId(), user.getLang());
             case EVENT_CREATED_LOCATION_SELECTED:
                 event.setDate(java.sql.Date.valueOf(messageText));
                 event.setTgId((long) (message.getMessageId() + 1));
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_DATE_SELECTED.name()));
-                answer = getTextByLanguage(user.getLang(), "EVENT.TIME");
-                break;
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                return sendTimeSelectionKeyboard(message.getChatId(), user.getLang());
             case EVENT_CREATED_DATE_SELECTED:
-                event.setTime(Time.valueOf(messageText));
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+                LocalTime localTime = LocalTime.parse(messageText, formatter);
+                event.setTime(java.sql.Time.valueOf(localTime));
                 event.setTgId((long) (message.getMessageId() + 1));
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_TIME_SELECTED.name()));
-                answer = "created!";
+                answer = createEventCardsMessage(user.getLang(), Collections.singletonList(event));
                 break;
             case EVENT_CREATED_TIME_SELECTED:
-                break;
+                return sendChoosingActionButtons(callbackQuery);
             case EVENT_UPDATE:
-                break;
-            case EVENT_UPDATE_CITY_SELECT:
-                break;
-            case EVENT_UPDATE_CATEGORY_SELECT:
-                break;
-            case EVENT_UPDATE_LOCATION_SELECT:
-                break;
-            case EVENT_UPDATE_NAME_SELECT:
-                break;
-            case EVENT_UPDATE_DESCRIPTION_SELECT:
-                break;
-            case EVENT_UPDATE_REQUIREMENTS_SELECT:
-                break;
-            case EVENT_UPDATE_DATE_SELECT:
-                break;
-            case EVENT_UPDATE_TIME_SELECT:
-                break;
-            case EVENT_DELETE:
-                break;
-            case MINE_EVENT_SELECTED:
-                break;
             case ENROLLED_EVENT_SELECTED:
-                break;
             case SOME_EVENT_SELECTED:
-                break;
+            case EVENT_DELETE:
+            case EVENT_UPDATE_CITY_SELECT:
+            case EVENT_UPDATE_CATEGORY_SELECT:
+            case EVENT_UPDATE_LOCATION_SELECT:
+            case EVENT_UPDATE_NAME_SELECT:
+            case EVENT_UPDATE_DESCRIPTION_SELECT:
+            case EVENT_UPDATE_REQUIREMENTS_SELECT:
+            case EVENT_UPDATE_DATE_SELECT:
+            case EVENT_UPDATE_TIME_SELECT:
+            case MINE_EVENT_SELECTED:
             case REMARK_CREATE:
-                break;
             case ENROLL_CREATE:
-                break;
             case REMARK_DELETE:
                 break;
             default:
@@ -527,7 +510,27 @@ public class TelegramServiceImpl implements TelegramService  {
         return createMessage(message, answer, false);
     }
 
-    private SendMessage sendDateSelectionKeyboard(Long chatId) {
+    @Override
+    public SendMessage sendChoosingActionKeyboard(Message message, String lang) {
+        List<KeyboardRow> keyboardRows = new ArrayList<>();
+        String answer;
+        String[] actions = new String[]{"EVENT.CREATE", "EVENT.SEARCH", "EVENT.MINE"};
+        KeyboardRow row = new KeyboardRow();
+        for (int i = 0; i < actions.length; i++) {
+            String actionText = (i + 1) + ". " + getTextByLanguage(lang, actions[i]);
+            row.add(new KeyboardButton(actionText));
+        }
+        keyboardRows.add(row);
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setKeyboard(keyboardRows);
+
+        answer = getTextByLanguage(lang, "EVENT.CHOOSE.MAIN.ACTION");
+        SendMessage messageReturn = createMessage(message, answer, false);
+        messageReturn.setReplyMarkup(keyboardMarkup);
+        return messageReturn;
+    }
+
+    private SendMessage sendDateSelectionKeyboard(Long chatId, String lang) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         List<KeyboardRow> keyboardRows = new ArrayList<>();
         LocalDate currentDate = LocalDate.now();
@@ -541,13 +544,13 @@ public class TelegramServiceImpl implements TelegramService  {
         keyboardMarkup.setKeyboard(keyboardRows);
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Выберите дату");
+        message.setText(getTextByLanguage(lang, "CHOOSE.DATE"));
         message.setReplyMarkup(keyboardMarkup);
         return message;
     }
 
 
-    private SendMessage sendTimeSelectionKeyboard(Long chatId) {
+    private SendMessage sendTimeSelectionKeyboard(Long chatId, String lang) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         List<KeyboardRow> keyboardRows = new ArrayList<>();
         for (int hour = 1; hour <= 12; hour++) {
@@ -563,33 +566,19 @@ public class TelegramServiceImpl implements TelegramService  {
         keyboardMarkup.setKeyboard(keyboardRows);
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Выберите время");
+        message.setText(getTextByLanguage(lang, "CHOOSE.TIME"));
         message.setReplyMarkup(keyboardMarkup);
         return message;
     }
 
-    private SendMessage createMessage(Message message, String answer, Boolean isReplyMessage){
+    private SendMessage createMessage(Message message, String answer, Boolean isReplyMessage) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(message.getChatId().toString());
-        if(isReplyMessage){
+        if (isReplyMessage) {
             sendMessage.setReplyToMessageId(message.getMessageId());
         }
         sendMessage.setText(answer);
         return sendMessage;
     }
-
-    private SendMessage createButtons(SendMessage sendMessage, KeyboardRow keyboardFirstRow, KeyboardRow keyboardSecondRow) {
-        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
-        replyKeyboardMarkup.setSelective(true);
-        replyKeyboardMarkup.setResizeKeyboard(true);
-        replyKeyboardMarkup.setOneTimeKeyboard(false);
-        List<KeyboardRow> keyboard = new ArrayList<>();
-        keyboard.add(keyboardFirstRow);
-        keyboard.add(keyboardSecondRow);
-        replyKeyboardMarkup.setKeyboard(keyboard);
-        sendMessage.setReplyMarkup(replyKeyboardMarkup);
-        return sendMessage;
-    }
-
 }

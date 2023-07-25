@@ -33,4 +33,6 @@ public interface TelegramService {
     SendMessage chooseCategory(Update update);
 
     SendMessage handleDefaultMessages(Update update);
+
+    SendMessage sendChoosingActionKeyboard(Message message, String lang);
 }

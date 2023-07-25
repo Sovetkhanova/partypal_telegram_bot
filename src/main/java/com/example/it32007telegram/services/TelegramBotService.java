@@ -49,6 +49,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
             String callbackData = callbackQuery.getData();
             if (callbackData.startsWith("event-")) {
                 execute(telegramService.getEvent(update));
+                execute(telegramService.sendChoosingActionButtons(callbackQuery));
             }
             if (callbackData.startsWith("lang-")) {
                 execute(telegramService.chooseLanguage(update));
@@ -69,7 +70,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
             }
             if (callbackData.startsWith("category-")) {
                 if(callbackData.endsWith("null")){
-                    telegramService.handleDefaultMessages(update);
+                    execute(telegramService.handleDefaultMessages(update));
                 }
                 else {
                     execute(telegramService.chooseCategory(update));
@@ -80,6 +81,12 @@ public class TelegramBotService extends TelegramLongPollingBot {
             String messageText = message.getText();
             if ("/start".equals(messageText)) {
                 execute(telegramService.startCommandReceived(message));
+            }
+            if(messageText.matches("\\d\\d:\\d\\d (AM|PM)")){
+                CallbackQuery callbackQuery = new CallbackQuery();
+                callbackQuery.setMessage(message);
+                callbackQuery.setFrom(message.getFrom());
+                execute(telegramService.sendChoosingActionButtons(callbackQuery));
             }
             if(!messageText.startsWith("/")){
                 execute(telegramService.handleDefaultMessages(update));
