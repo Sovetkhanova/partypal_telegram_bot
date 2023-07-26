@@ -60,4 +60,7 @@ public class Event extends BaseEntity {
     @Column(name = "tg_id")
     private Long tgId;
 
+    @Column(name = "detected_language")
+    private String detectedLanguage;
+
 }

@@ -83,10 +83,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 execute(telegramService.startCommandReceived(message));
             }
             if(messageText.matches("\\d\\d:\\d\\d (AM|PM)")){
-                CallbackQuery callbackQuery = new CallbackQuery();
-                callbackQuery.setMessage(message);
-                callbackQuery.setFrom(message.getFrom());
-                execute(telegramService.sendChoosingActionButtons(callbackQuery));
+                execute(telegramService.sendChoosingActionKeyboard(message, "ru"));
             }
             if(!messageText.startsWith("/")){
                 execute(telegramService.handleDefaultMessages(update));

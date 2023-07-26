@@ -14,6 +14,7 @@ import javax.persistence.Table;
 @Table(schema = "partypal_tg", name = "state")
 public class State extends BaseEntityWithCode {
     public enum StateCode {
+        USER_CREATED,
         EVENT_CREATED,
         EVENT_CREATED_NAME_SELECTED,
         EVENT_CREATED_DESCRIPTION_SELECTED,

@@ -1,7 +1,9 @@
 package com.example.partypal.services;
 
+import com.example.partypal.daos.repositories.StateRepository;
 import com.example.partypal.daos.repositories.UserRepository;
 import com.example.partypal.daos.repositories.UserStatusRepository;
+import com.example.partypal.models.entities.telegram.State;
 import com.example.partypal.models.entities.users.User;
 import com.example.partypal.models.entities.users.UserStatus;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import java.util.Optional;
 public class UserServiceImpl implements UserService {
     private final UserStatusRepository userStatusRepository;
     private final UserRepository userRepository;
+    private final StateRepository stateRepository;
 
     @Override
     public User getOrCreateUser(org.telegram.telegrambots.meta.api.objects.User userTg) {
@@ -35,9 +38,6 @@ public class UserServiceImpl implements UserService {
         if(language == null){
             language = "ru";
         }
-        if(language.equals("kz")){
-            language = "kk";
-        }
         User user = User.builder()
                 .firstName(userTg.getFirstName())
                 .lastName(userTg.getLastName())
@@ -45,6 +45,7 @@ public class UserServiceImpl implements UserService {
                 .dateCreated(LocalDate.now())
                 .telegramId(userTg.getId())
                 .telegramUsername(userTg.getUserName())
+                .current_state(stateRepository.findByCode(State.StateCode.USER_CREATED.name()))
                 .lang(language)
                 .lastLoginDateTime(LocalDateTime.now())
                 .build();

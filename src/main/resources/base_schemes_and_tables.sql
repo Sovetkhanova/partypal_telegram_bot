@@ -169,6 +169,7 @@ create table partypal_tg.state
     code varchar not null
         unique
 );
+USER_CREATED
 EVENT_CREATED
 EVENT_CREATED_NAME_SELECTED
 EVENT_CREATED_DESCRIPTION_SELECTED
@@ -297,3 +298,5 @@ create table partypal_event.event
             on delete set null,
     tg_id        bigint
 );
+
+alter table partypal_event.event add column detected_language varchar;

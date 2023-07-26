@@ -50,7 +50,7 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
     public Map<String, List<Event>> getUserEvents(User user) {
         List<Event> events = eventRepository.findAll()
                 .stream()
-                .filter(event -> event.getName() != null && event.getDate() != null)
+                .filter(event -> event.getDetectedLanguage() != null)
                 .collect(Collectors.toList());
         List<Event> mineEvents = events.stream().filter(
                 event -> (event.getCreatedUser() != null) && event.getCreatedUser().getId().equals(user.getId()))
