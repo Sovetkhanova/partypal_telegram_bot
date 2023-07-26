@@ -1,0 +1,38 @@
+package com.example.partypal.services;
+
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.Update;
+
+import java.util.List;
+
+public interface TelegramService {
+    SendMessage startCommandReceived(Message message);
+
+    SendMessage listCommandReceived(CallbackQuery callbackQuery);
+
+    List<Object> createCommandReceived(CallbackQuery callbackQuery);
+
+    SendMessage searchCommandReceived(CallbackQuery callbackQuery);
+
+    SendMessage getEvent(Update update);
+
+    SendMessage chooseLanguageCommandReceived(Message message);
+
+    SendMessage chooseLanguage(Update update);
+
+    SendMessage sendGreetingMessage(Message message, String lang);
+
+    SendMessage sendChoosingActionButtons(CallbackQuery callbackQuery);
+
+    SendMessage makeMainAction(Update update);
+
+    SendMessage chooseCity(Update update);
+
+    SendMessage chooseCategory(Update update);
+
+    SendMessage handleDefaultMessages(Update update);
+
+    SendMessage sendChoosingActionKeyboard(Message message, String lang);
+}
