@@ -1,5 +1,4 @@
 group = 'com.example'
-version = '0.0.1-SNAPSHOT'
 
 buildscript {
     ext {
@@ -65,8 +64,6 @@ dependencies {
     testImplementation('org.springframework.boot:spring-boot-starter-test:2.5.14')
     testImplementation('org.junit.jupiter:junit-jupiter:5.9.0')
     testImplementation 'junit:junit:4.13.2'
-    testImplementation group: 'com.h2database', name: 'h2'
-    testImplementation 'org.hsqldb:hsqldb:2.7.1'
 }
 
 dependencyManagement {

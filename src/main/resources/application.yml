@@ -20,6 +20,7 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+        dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: ${JPA_SHOW_SQL:true}
   profiles:
     active: ${APP_ENV:dev}
