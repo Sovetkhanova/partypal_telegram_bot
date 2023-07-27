@@ -100,6 +100,18 @@ public class TelegramBotService extends TelegramLongPollingBot {
             if ("/start".equals(messageText)) {
                 execute(telegramService.startCommandReceived(message));
             }
+            CallbackQuery callbackQuery = new CallbackQuery();
+            callbackQuery.setFrom(message.getFrom());
+            callbackQuery.setMessage(message);
+            if ("/list".equals(messageText)) {
+                execute(telegramService.listCommandReceived(callbackQuery));
+            }
+            if ("/search".equals(messageText)) {
+                execute(telegramService.searchCommandReceived(callbackQuery));
+            }
+            if ("/lang".equals(messageText)) {
+                execute(telegramService.chooseLanguageCommandReceived(message));
+            }
             if(!messageText.startsWith("/")){
                 List<SendMessage> messages = telegramService.handleDefaultMessages(update);
                 if(messages != null){
