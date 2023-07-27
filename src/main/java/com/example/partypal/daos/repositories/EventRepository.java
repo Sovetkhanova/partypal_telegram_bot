@@ -12,4 +12,6 @@ public interface EventRepository extends BaseRepository<Event, Long> {
     List<Event> findAllByDateAfterAndDetectedLanguageIsNotNull(Date date);
 
     Optional<Event> findByTgId(Long id);
+
+    List<Event> findByCreatedUser_IdAndDetectedLanguageIsNotNull(Long userId);
 }

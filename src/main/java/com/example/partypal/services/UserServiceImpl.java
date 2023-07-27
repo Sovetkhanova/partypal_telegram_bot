@@ -1,6 +1,7 @@
 package com.example.partypal.services;
 
 import com.example.partypal.daos.repositories.StateRepository;
+import com.example.partypal.daos.repositories.UserEventLinkRepository;
 import com.example.partypal.daos.repositories.UserRepository;
 import com.example.partypal.daos.repositories.UserStatusRepository;
 import com.example.partypal.models.entities.telegram.State;
@@ -20,15 +21,28 @@ public class UserServiceImpl implements UserService {
     private final UserStatusRepository userStatusRepository;
     private final UserRepository userRepository;
     private final StateRepository stateRepository;
+    private final UserEventLinkRepository userEventLinkRepository;
 
     @Override
     public User getOrCreateUser(org.telegram.telegrambots.meta.api.objects.User userTg) {
         return findUserByTelegramId(userTg.getId()).orElseGet(() -> createUser(userTg));
     }
 
-    @Cacheable("user")
+    @Cacheable(value = "user")
     public Optional<User> findUserByTelegramId(Long tgId){
         return userRepository.findByTelegramId(tgId);
+    }
+
+    @Override
+    @Cacheable(value = "user")
+    public Optional<User> findUserById(Long id){
+        return userRepository.findById(id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRemark(long userId, long eventId) {
+        userEventLinkRepository.deleteAllByUser_IdAndEvent_Id(userId, eventId);
     }
 
     @Override
