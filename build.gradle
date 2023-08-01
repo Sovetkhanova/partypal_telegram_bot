@@ -6,6 +6,7 @@ buildscript {
         springKafkaVersion = '2.7.2'
         mapstuctVersion = '1.5.3.Final'
         springCloudVersion = '2020.0.6'
+        flyway = '6.0.8'
     }
     repositories {
         mavenCentral()
@@ -37,6 +38,7 @@ dependencies {
     implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client") {
         exclude group: 'javax.ws.rs', module: 'jsr311-api'
     }
+    implementation "org.flywaydb:flyway-core:${flyway}"
 
     implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
 

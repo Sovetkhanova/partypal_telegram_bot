@@ -5,7 +5,7 @@ spring:
     ansi:
       enabled: DETECT
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:postgres}
+    url: jdbc:postgresql://${DB_HOST:db}:${DB_PORT:5432}/${DB_NAME:postgres}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASS:postgres}
     hikari:
@@ -20,7 +20,7 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.PostgreSQL82Dialect
     show-sql: ${JPA_SHOW_SQL:true}
   profiles:
     active: ${APP_ENV:dev}
@@ -29,6 +29,17 @@ spring:
         cache:
           use_second_level_cache: true
           use_query_cache: true
+  flyway:
+    schemas: public
+    out-of-order: ${FLYWAY_OUT_OF_ORDER:false}
+    validate-on-migrate: true
+flyway:
+  locations: classpath:db/migration
+  url: jdbc:postgresql://${DB_HOST:0.0.0.0}:${DB_PORT:5432}/${DB_NAME:postgres}
+  user: ${DB_USERNAME:postgres}
+  password: ${DB_PASS:postgres}
+  baselineOnMigrate: true
+
 bots:
   telegram:
     name: ${TELEGRAM_BOT_NAME:almaty_partypal_bot}
@@ -53,4 +64,3 @@ server:
 geocoder:
   url: ${GEOCODER_URL:https://geocode-maps.yandex.ru/1.x}
   key: ${GEOCODER_KEY:35c221c7-b4ab-4ddc-8a80-9346adac26cf}
-  # application.properties
