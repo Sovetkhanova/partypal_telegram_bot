@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
-import java.io.File;
 
 @Data
 @NoArgsConstructor
@@ -29,12 +28,7 @@ public class Document extends BaseEntity {
     @Column(name = "size")
     private Long size;
 
-    @Column(name = "path")
-    private String path;
-
     @OneToOne(mappedBy = "document")
     private Event event;
 
-    @Column(name = "file")
-    private File file;
 }

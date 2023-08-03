@@ -237,26 +237,25 @@ public class TelegramServiceImpl implements TelegramService {
         if(optionalEvent.isPresent()){
             List<PhotoSize> photoSizes = message.getPhoto();
             List<Document> s = new ArrayList<>();
-            PhotoSize maxPS = photoSizes.get(0);
-            int maxId = 0;
+            PhotoSize minPS = photoSizes.get(0);
+            int minId = 0;
             for (int i = 0; i < photoSizes.size(); i++) {
                 Document file = Document.builder()
                         .tgId(photoSizes.get(i).getFileId())
                         .tgUniqueId(photoSizes.get(i).getFileUniqueId())
                         .size(photoSizes.get(i).getFileSize().longValue())
-                        .path(photoSizes.get(i).getFilePath())
                         .event(optionalEvent.get())
                         .name(optionalEvent.get().getName())
                         .build();
-                if(maxPS.getFileSize() < photoSizes.get(i).getFileSize()){
-                    maxPS = photoSizes.get(i);
-                    maxId = i;
+                if(minPS.getFileSize() > photoSizes.get(i).getFileSize()){
+                    minPS = photoSizes.get(i);
+                    minId = i;
                 }
                 s.add(file);
             }
             documentRepository.saveAll(s);
             Event event = optionalEvent.get();
-            event.setDocument(s.get(maxId));
+            event.setDocument(s.get(minId));
             eventService.saveEvent(event);
         }
     }
