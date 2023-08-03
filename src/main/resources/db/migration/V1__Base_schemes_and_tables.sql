@@ -201,3 +201,9 @@ create table partypal_event.event
 
 alter table partypal_event.event
     add column detected_language varchar;
+
+create table partypal_event.event_user_reference(
+    user_id bigint references partypal_user.user_account(id),
+    event_id bigint references partypal_event.event(id)
+);
+alter table partypal_event.event_user_reference add column id bigserial primary key;
