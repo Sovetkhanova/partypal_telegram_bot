@@ -65,7 +65,7 @@ public class User extends BaseEntity {
     @Column(name = "telegram_username")
     private String telegramUsername;
 
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     @Builder.Default
     private List<UserEventLink> userEventLinks = new ArrayList<>();
 
