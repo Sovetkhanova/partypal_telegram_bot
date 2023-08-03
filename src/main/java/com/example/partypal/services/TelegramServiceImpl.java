@@ -212,7 +212,7 @@ public class TelegramServiceImpl implements TelegramService {
         long eventId = Long.parseLong(parts[3].replaceAll("\\D", ""));
         switch ((int) actionId){
             case 0:
-                sendMessageList.add(editCommandReceived(userId, eventId, update));
+                sendMessageList.add(editCommandReceived(update));
                 break;
             case 1:
                 sendMessageList.add(deleteCommandReceived(userId, eventId, update));
@@ -319,8 +319,9 @@ public class TelegramServiceImpl implements TelegramService {
         }
     }
 
-    private SendMessage editCommandReceived(long userId, long eventId, Update update) {
-        return null;
+    private SendMessage editCommandReceived(Update update) {
+        Message message = (update.getMessage() != null) ? update.getMessage() : update.getCallbackQuery().getMessage();
+        return createMessage(message, "404", false);
     }
 
 
@@ -590,7 +591,6 @@ public class TelegramServiceImpl implements TelegramService {
     public List<Validable> handleDefaultMessages(Update update) {
         List<Validable> sendMessageList = new ArrayList<>();
         CallbackQuery callbackQuery = update.getCallbackQuery();
-        boolean isCreated = false;
         Message message = update.getMessage();
         org.telegram.telegrambots.meta.api.objects.User userTemp;
         if (callbackQuery != null && message == null) {
@@ -750,9 +750,6 @@ public class TelegramServiceImpl implements TelegramService {
         userService.saveUser(user);
         eventService.saveEvent(event);
         sendMessageList.add(createMessage(message, answer, false));
-        if(isCreated){
-            sendMessageList.add(sendEventActionButtons(callbackQuery, user, event));
-        }
         return sendMessageList;
     }
 
