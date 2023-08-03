@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public interface EventRepository extends BaseRepository<Event, Long> {
 
-    List<Event> findAllByDateAfterAndDetectedLanguageIsNotNull(Date date);
+    List<Event> findAllByDetectedLanguageIsNotNullAndDateAfterOrDateEquals(Date dateAfter, Date dateEqual);
 
     Optional<Event> findByTgId(Long id);
 

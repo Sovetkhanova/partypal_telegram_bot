@@ -257,7 +257,7 @@ public class TelegramServiceImpl implements TelegramService {
             User user = userOptional.get();
             Optional<Event> eventOptional = eventRepository.findById(eventId);
             if(eventOptional.isPresent()){
-                if(userEventLinkRepository.existsByUser_IdAndEvent_Id(userId, eventId)){
+                if(!userEventLinkRepository.existsByUser_IdAndEvent_Id(userId, eventId)){
                     UserEventLink userEventLink = UserEventLink.builder()
                             .user(user)
                             .event(eventOptional.get())
@@ -524,7 +524,7 @@ public class TelegramServiceImpl implements TelegramService {
         String[] parts = callbackQuery.getData().split("-");
         long categoryId = Long.parseLong(parts[1].replaceAll("\\D", ""));
         long cityId = Long.parseLong(parts[2].replaceAll("\\D", ""));
-        List<Event> eventList = eventRepository.findAllByDateAfterAndDetectedLanguageIsNotNull(new Date());
+        List<Event> eventList = eventRepository.findAllByDetectedLanguageIsNotNullAndDateAfterOrDateEquals(new Date(), new Date());
         if (eventList.isEmpty()) {
             return sendChoosingActionButtons(callbackQuery);
         }
