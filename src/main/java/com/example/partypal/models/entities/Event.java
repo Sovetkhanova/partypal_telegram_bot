@@ -64,7 +64,7 @@ public class Event extends BaseEntity {
     @Column(name = "detected_language")
     private String detectedLanguage;
 
-    @OneToOne
+    @OneToOne(cascade = CascadeType.REMOVE)
     @JoinColumn(name = "document_id")
     private Document document;
 
