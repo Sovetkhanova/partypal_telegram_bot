@@ -4,6 +4,7 @@ import com.example.partypal.models.entities.base.BaseEntity;
 import com.example.partypal.models.entities.base.Category;
 import com.example.partypal.models.entities.base.City;
 import com.example.partypal.models.entities.base.Country;
+import com.example.partypal.models.entities.telegram.Document;
 import com.example.partypal.models.entities.users.User;
 import lombok.*;
 
@@ -62,5 +63,9 @@ public class Event extends BaseEntity {
 
     @Column(name = "detected_language")
     private String detectedLanguage;
+
+    @OneToOne
+    @JoinColumn(name = "document_id")
+    private Document document;
 
 }

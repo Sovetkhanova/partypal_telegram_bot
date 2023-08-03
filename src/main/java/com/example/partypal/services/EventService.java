@@ -3,6 +3,7 @@ package com.example.partypal.services;
 import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.users.User;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,4 +18,6 @@ public interface EventService {
     Optional<Event> findEventByMessageId(Long messageId);
 
     void saveEvent(Event event);
+
+    void deleteAll(Collection<Event> events);
 }

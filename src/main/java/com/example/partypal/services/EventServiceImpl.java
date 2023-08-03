@@ -48,6 +48,12 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
     }
 
     @Override
+    @Transactional
+    public void deleteAll(Collection<Event> events) {
+        eventRepository.deleteAll(events);
+    }
+
+    @Override
     public Map<String, List<Event>> getUserEvents(User user) {
         List<Event> mineEvents = eventRepository.findByCreatedUser_IdAndDetectedLanguageIsNotNull(user.getId());
         List<Event> enrolledEvents = new ArrayList<>();

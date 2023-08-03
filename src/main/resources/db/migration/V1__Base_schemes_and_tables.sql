@@ -207,3 +207,13 @@ create table partypal_event.event_user_reference(
     event_id bigint references partypal_event.event(id)
 );
 alter table partypal_event.event_user_reference add column id bigserial primary key;
+
+create table partypal_tg.document(
+    id bigserial primary key,
+    tg_id varchar not null,
+    tg_unique_id varchar not null,
+    name varchar
+);
+alter table partypal_tg.document add column size bigint;
+alter table partypal_tg.document add column path varchar;
+alter table partypal_event.event add column document_id bigint references partypal_tg.document (id) on delete set null

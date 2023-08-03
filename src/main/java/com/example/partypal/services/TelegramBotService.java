@@ -6,7 +6,9 @@ import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.interfaces.Validable;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -48,9 +50,14 @@ public class TelegramBotService extends TelegramLongPollingBot {
             CallbackQuery callbackQuery = update.getCallbackQuery();
             String callbackData = callbackQuery.getData();
             if (callbackData.startsWith("event-")) {
-                List<SendMessage> messages = telegramService.getEvent(update);
-                for (SendMessage m : messages) {
-                    execute(m);
+                List<Validable> messages = telegramService.getEvent(update);
+                for (Validable m : messages) {
+                    if(m.getClass().equals(SendPhoto.class)){
+                        execute((SendPhoto) m);
+                    }
+                    if(m.getClass().equals(SendMessage.class)){
+                        execute((SendMessage) m);
+                    }
                 }
             }
             if (callbackData.startsWith("lang-")) {
@@ -71,14 +78,19 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 }
             }
             if (callbackData.startsWith("city-")) {
-                execute(telegramService.chooseCity(update));
+               Validable v = telegramService.chooseCity(update);
+                if(v.getClass().equals(SendMessage.class)){
+                    execute((SendMessage) v);
+                }
             }
             if (callbackData.startsWith("category-")) {
                 if(callbackData.endsWith("null")){
-                    List<SendMessage> messages = telegramService.handleDefaultMessages(update);
+                    List<Validable> messages = telegramService.handleDefaultMessages(update);
                     if(messages != null){
-                        for (SendMessage m : messages) {
-                            execute(m);
+                        for (Validable m : messages) {
+                            if(m.getClass().equals(SendMessage.class)){
+                                execute((SendMessage) m);
+                            }
                         }
                     }
                 }
@@ -90,7 +102,9 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 List<SendMessage> messages = telegramService.makeEventAction(update);
                 if(messages != null){
                     for (SendMessage m : messages) {
-                        execute(m);
+                        if(m != null){
+                            execute(m);
+                        }
                     }
                 }
             }
@@ -103,6 +117,11 @@ public class TelegramBotService extends TelegramLongPollingBot {
             CallbackQuery callbackQuery = new CallbackQuery();
             callbackQuery.setFrom(message.getFrom());
             callbackQuery.setMessage(message);
+            if ("/create".equals(messageText)) {
+                List<Object> objs = telegramService.createCommandReceived(callbackQuery);
+                Integer messageId = execute((SendMessage) objs.get(0)).getMessageId();
+                eventService.createEvent((User) objs.get(1), Long.valueOf(messageId));
+            }
             if ("/list".equals(messageText)) {
                 execute(telegramService.listCommandReceived(callbackQuery));
             }
@@ -113,19 +132,39 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 execute(telegramService.chooseLanguageCommandReceived(message));
             }
             if(!messageText.startsWith("/")){
-                List<SendMessage> messages = telegramService.handleDefaultMessages(update);
+                List<Validable> messages = telegramService.handleDefaultMessages(update);
                 if(messages != null){
-                    for (SendMessage m : messages) {
-                        execute(m);
+                    for (Validable m : messages) {
+                        if(m.getClass().equals(SendMessage.class)){
+                            execute((SendMessage) m);
+                        }
+                        if(m.getClass().equals(SendPhoto.class)){
+                            execute((SendPhoto) m);
+                        }
                     }
                 }
             }
         }
         if(message != null && message.hasLocation()){
-            List<SendMessage> messages = telegramService.handleDefaultMessages(update);
+            List<Validable> messages = telegramService.handleDefaultMessages(update);
             if(messages != null){
-                for (SendMessage m : messages) {
-                    execute(m);
+                for (Validable m : messages) {
+                    if(m.getClass().equals(SendMessage.class)){
+                        execute((SendMessage) m);
+                    }
+                }
+            }
+        }
+        if(message != null && message.hasPhoto()){
+            List<Validable> messages = telegramService.handleDefaultMessages(update);
+            if(messages != null){
+                for (Validable m : messages) {
+                    if(m.getClass().equals(SendMessage.class)){
+                        execute((SendMessage) m);
+                    }
+                    if(m.getClass().equals(SendPhoto.class)){
+                        execute((SendPhoto) m);
+                    }
                 }
             }
         }

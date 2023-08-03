@@ -2,6 +2,7 @@ package com.example.partypal.services;
 
 import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.users.User;
+import org.telegram.telegrambots.meta.api.interfaces.Validable;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -18,7 +19,7 @@ public interface TelegramService {
 
     SendMessage searchCommandReceived(CallbackQuery callbackQuery);
 
-    List<SendMessage> getEvent(Update update);
+    List<Validable> getEvent(Update update);
 
     SendMessage chooseLanguageCommandReceived(Message message);
 
@@ -30,15 +31,17 @@ public interface TelegramService {
 
     SendMessage makeMainAction(Update update);
 
-    SendMessage chooseCity(Update update);
+    Validable chooseCity(Update update);
 
     SendMessage chooseCategory(Update update);
 
-    List<SendMessage> handleDefaultMessages(Update update);
+    List<Validable> handleDefaultMessages(Update update);
 
     SendMessage sendChoosingActionKeyboard(Message message, String lang);
 
     SendMessage sendEventActionButtons(CallbackQuery callbackQuery, User user, Event event);
 
     List<SendMessage> makeEventAction(Update update);
+
+    void handlePhoto(Message message);
 }

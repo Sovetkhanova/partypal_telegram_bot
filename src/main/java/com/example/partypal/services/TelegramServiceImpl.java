@@ -5,6 +5,7 @@ import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.UserEventLink;
 import com.example.partypal.models.entities.base.Category;
 import com.example.partypal.models.entities.base.City;
+import com.example.partypal.models.entities.telegram.Document;
 import com.example.partypal.models.entities.telegram.State;
 import com.example.partypal.models.entities.users.User;
 import lombok.RequiredArgsConstructor;
@@ -12,11 +13,10 @@ import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.telegram.telegrambots.meta.api.interfaces.Validable;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
-import org.telegram.telegrambots.meta.api.objects.Location;
-import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -43,6 +43,7 @@ public class TelegramServiceImpl implements TelegramService {
     private final StateRepository stateRepository;
     private final GeocoderService geocoderService;
     private final UserEventLinkRepository userEventLinkRepository;
+    private final DocumentRepository documentRepository;
 
     @Override
     public SendMessage startCommandReceived(Message message) {
@@ -190,7 +191,6 @@ public class TelegramServiceImpl implements TelegramService {
             if (mainActionsMap.containsKey(i)) {
                 InlineKeyboardButton button = new InlineKeyboardButton(mainActionsMap.get(i));
                 button.setCallbackData("eventAction-" + i + "user-" + user.getId() + "event-" + event.getId());
-                System.out.println(button.getCallbackData());
                 inlineKeyboardButtons.add(button);
             }
         }
@@ -228,6 +228,37 @@ public class TelegramServiceImpl implements TelegramService {
         }
         sendMessageList.add(sendChoosingActionButtons(callbackQuery));
         return sendMessageList;
+    }
+
+    @Override
+    @Transactional
+    public void handlePhoto(Message message) {
+        Optional<Event> optionalEvent = eventService.findEventByMessageId((long) (message.getMessageId() - 1));
+        if(optionalEvent.isPresent()){
+            List<PhotoSize> photoSizes = message.getPhoto();
+            List<Document> s = new ArrayList<>();
+            PhotoSize maxPS = photoSizes.get(0);
+            int maxId = 0;
+            for (int i = 0; i < photoSizes.size(); i++) {
+                Document file = Document.builder()
+                        .tgId(photoSizes.get(i).getFileId())
+                        .tgUniqueId(photoSizes.get(i).getFileUniqueId())
+                        .size(photoSizes.get(i).getFileSize().longValue())
+                        .path(photoSizes.get(i).getFilePath())
+                        .event(optionalEvent.get())
+                        .name(optionalEvent.get().getName())
+                        .build();
+                if(maxPS.getFileSize() < photoSizes.get(i).getFileSize()){
+                    maxPS = photoSizes.get(i);
+                    maxId = i;
+                }
+                s.add(file);
+            }
+            documentRepository.saveAll(s);
+            Event event = optionalEvent.get();
+            event.setDocument(s.get(maxId));
+            eventService.saveEvent(event);
+        }
     }
 
     public SendMessage deleteRemarkCommandReceived(long userId, long eventId, Update update) {
@@ -404,8 +435,8 @@ public class TelegramServiceImpl implements TelegramService {
     }
 
     @Override
-    public List<SendMessage> getEvent(Update update) {
-        List<SendMessage> sendMessageList = new ArrayList<>();
+    public List<Validable> getEvent(Update update) {
+        List<Validable> sendMessageList = new ArrayList<>();
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackData = callbackQuery.getData();
         String id = callbackData.substring(6);
@@ -415,6 +446,9 @@ public class TelegramServiceImpl implements TelegramService {
             User user = userService.getOrCreateUser(callbackQuery.getFrom());
             answer = createEventCardsMessage(user.getLang(), Collections.singletonList(eventOptional.get()));
             sendMessageList.add(createMessage(callbackQuery.getMessage(), answer, false));
+            if(eventOptional.get().getDocument() != null){
+                sendMessageList.add(new SendPhoto(String.valueOf(callbackQuery.getMessage().getChatId()), new InputFile(eventOptional.get().getDocument().getTgId())));
+            }
             sendMessageList.add(sendEventActionButtons(callbackQuery, user, eventOptional.get()));
         }
         return sendMessageList;
@@ -469,7 +503,7 @@ public class TelegramServiceImpl implements TelegramService {
         return sendMessage;
     }
 
-    public SendMessage chooseCity(Update update) {
+    public Validable chooseCity(Update update) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackCityId = callbackQuery.getData().substring(5);
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
@@ -524,11 +558,15 @@ public class TelegramServiceImpl implements TelegramService {
         String[] parts = callbackQuery.getData().split("-");
         long categoryId = Long.parseLong(parts[1].replaceAll("\\D", ""));
         long cityId = Long.parseLong(parts[2].replaceAll("\\D", ""));
-        List<Event> eventList = eventRepository.findAllByDetectedLanguageIsNotNullAndDateAfterOrDateEquals(new Date(), new Date());
-        if (eventList.isEmpty()) {
+        List<Event> eventList = eventRepository.findAll();
+        List<Event> events = eventList.stream().filter(event -> event.getDetectedLanguage() != null && ((event.getDate().toLocalDate().isAfter(LocalDate.now())) || (event.getDate().toLocalDate().isEqual(LocalDate.now()))))
+                .collect(Collectors.toList());
+        eventList.removeAll(events);
+        eventService.deleteAll(eventList);
+        if (events.isEmpty()) {
             return sendChoosingActionButtons(callbackQuery);
         }
-        List<Event> sortedEvents = eventList.stream()
+        List<Event> sortedEvents = events.stream()
                 .filter(event -> ((cityId == 0) && (categoryId == 0)) || ((cityId == 0) && (event.getCategory().getId().equals(categoryId)))
                         || ((categoryId == 0) && event.getCity().getId().equals(cityId)) || (event.getCity().getId().equals(cityId) && event.getCategory().getId().equals(categoryId)))
                 .sorted(Comparator.comparing(Event::getDate).thenComparing(Event::getTime))
@@ -550,8 +588,8 @@ public class TelegramServiceImpl implements TelegramService {
     }
 
     @Override
-    public List<SendMessage> handleDefaultMessages(Update update) {
-        List<SendMessage> sendMessageList = new ArrayList<>();
+    public List<Validable> handleDefaultMessages(Update update) {
+        List<Validable> sendMessageList = new ArrayList<>();
         CallbackQuery callbackQuery = update.getCallbackQuery();
         boolean isCreated = false;
         Message message = update.getMessage();
@@ -674,10 +712,20 @@ public class TelegramServiceImpl implements TelegramService {
                 event.setTgId((long) (message.getMessageId() + 1));
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_TIME_SELECTED.name()));
                 event.setDetectedLanguage(translatorService.detectTextsLang(event.getName() + " " + event.getDescription() + " " + event.getRequirement()));
-                answer = createEventCardsMessage(user.getLang(), Collections.singletonList(event));
-                isCreated = true;
+                answer = getTextByLanguage(user.getLang(), "UPLOAD.PHOTO");
                 break;
             case EVENT_CREATED_TIME_SELECTED:
+                if(message.hasPhoto()){
+                    handlePhoto(message);
+                }
+                callbackQuery.setData("event-" + event.getId());
+                update.setCallbackQuery(callbackQuery);
+                event.setTgId((long) (message.getMessageId() + 1));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_PHOTO_SELECTED.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                return getEvent(update);
+            case EVENT_CREATED_PHOTO_SELECTED:
                 return Collections.singletonList(sendChoosingActionButtons(callbackQuery));
             case EVENT_UPDATE:
             case ENROLLED_EVENT_SELECTED:
