@@ -47,123 +47,135 @@ public class TelegramBotService extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         Message message = update.getMessage();
         if (update.hasCallbackQuery()) {
-            CallbackQuery callbackQuery = update.getCallbackQuery();
-            String callbackData = callbackQuery.getData();
-            if (callbackData.startsWith("event-")) {
-                List<Validable> messages = telegramService.getEvent(update);
-                for (Validable m : messages) {
-                    if(m.getClass().equals(SendPhoto.class)){
-                        execute((SendPhoto) m);
-                    }
-                    if(m.getClass().equals(SendMessage.class)){
-                        execute((SendMessage) m);
-                    }
-                }
+            handleCallBackQuery(update);
+        }
+        if (message != null) {
+            if (message.hasText()) {
+                handleMessageText(update);
             }
-            if (callbackData.startsWith("lang-")) {
-                execute(telegramService.chooseLanguage(update));
-                execute(telegramService.sendChoosingActionButtons(callbackQuery));
+            if (message.hasLocation()) {
+                handleMessageLocation(update);
             }
-            if (callbackData.startsWith("action-")) {
-                String callbackLang = callbackQuery.getData().substring(7);
-                if (callbackLang.startsWith("1")) {
-                    List<Object> objs = telegramService.createCommandReceived(callbackQuery);
-                    Integer messageId = execute((SendMessage) objs.get(0)).getMessageId();
-                    eventService.createEvent((User) objs.get(1), Long.valueOf(messageId));
-                } else {
-                    SendMessage sendMessage = telegramService.makeMainAction(update);
-                    if(sendMessage != null){
-                        execute(sendMessage);
-                    }
-                }
+            if (message.hasPhoto()) {
+                handleMessagePhoto(update);
             }
-            if (callbackData.startsWith("city-")) {
-               Validable v = telegramService.chooseCity(update);
-                if(v.getClass().equals(SendMessage.class)){
-                    execute((SendMessage) v);
+        }
+    }
+
+    @SneakyThrows
+    private void handleMessagePhoto(Update update) {
+        List<Validable> messages = telegramService.handleDefaultMessages(update);
+        if (messages != null) {
+            for (Validable m : messages) {
+                if (m.getClass().equals(SendMessage.class)) {
+                    execute((SendMessage) m);
                 }
-            }
-            if (callbackData.startsWith("category-")) {
-                if(callbackData.endsWith("null")){
-                    List<Validable> messages = telegramService.handleDefaultMessages(update);
-                    if(messages != null){
-                        for (Validable m : messages) {
-                            if(m.getClass().equals(SendMessage.class)){
-                                execute((SendMessage) m);
-                            }
-                        }
-                    }
-                }
-                else {
-                    execute(telegramService.chooseCategory(update));
-                }
-            }
-            if (callbackData.startsWith("eventAction-")) {
-                List<SendMessage> messages = telegramService.makeEventAction(update);
-                if(messages != null){
-                    for (SendMessage m : messages) {
-                        if(m != null){
-                            execute(m);
-                        }
-                    }
+                if (m.getClass().equals(SendPhoto.class)) {
+                    execute((SendPhoto) m);
                 }
             }
         }
-        if (message != null && message.hasText()) {
-            String messageText = message.getText();
-            if ("/start".equals(messageText)) {
-                execute(telegramService.startCommandReceived(message));
+    }
+
+    @SneakyThrows
+    private void handleMessageLocation(Update update) {
+        List<Validable> messages = telegramService.handleDefaultMessages(update);
+        if (messages != null) {
+            for (Validable m : messages) {
+                if (m.getClass().equals(SendMessage.class)) {
+                    execute((SendMessage) m);
+                }
             }
-            CallbackQuery callbackQuery = new CallbackQuery();
-            callbackQuery.setFrom(message.getFrom());
-            callbackQuery.setMessage(message);
-            if ("/create".equals(messageText)) {
+        }
+    }
+
+    @SneakyThrows
+    private void handleMessageText(Update update) {
+        Message message = update.getMessage();
+        String messageText = message.getText();
+        CallbackQuery callbackQuery = new CallbackQuery();
+        callbackQuery.setFrom(message.getFrom());
+        callbackQuery.setMessage(message);
+        if ("/start".equals(messageText)) {
+            execute(telegramService.startCommandReceived(message));
+        }
+        if ("/create".equals(messageText)) {
+            List<Object> objs = telegramService.createCommandReceived(callbackQuery);
+            Integer messageId = execute((SendMessage) objs.get(0)).getMessageId();
+            eventService.createEvent((User) objs.get(1), Long.valueOf(messageId));
+        }
+        if ("/list".equals(messageText)) {
+            execute(telegramService.listCommandReceived(callbackQuery));
+        }
+        if ("/search".equals(messageText)) {
+            execute(telegramService.searchCommandReceived(callbackQuery));
+        }
+        if ("/lang".equals(messageText)) {
+            execute(telegramService.chooseLanguageCommandReceived(message));
+        }
+        if (!messageText.startsWith("/")) {
+            handleMessagePhoto(update);
+        }
+    }
+
+    @SneakyThrows
+    private void handleCallBackQuery(Update update) {
+        CallbackQuery callbackQuery = update.getCallbackQuery();
+        String callbackData = callbackQuery.getData();
+        if (callbackData.startsWith("event-")) {
+            List<Validable> messages = telegramService.getEvent(update);
+            for (Validable m : messages) {
+                if (m.getClass().equals(SendPhoto.class)) {
+                    execute((SendPhoto) m);
+                }
+                if (m.getClass().equals(SendMessage.class)) {
+                    execute((SendMessage) m);
+                }
+            }
+        }
+        if (callbackData.startsWith("lang-")) {
+            execute(telegramService.chooseLanguage(update));
+            execute(telegramService.sendChoosingActionButtons(callbackQuery));
+        }
+        if (callbackData.startsWith("action-")) {
+            String callbackLang = callbackQuery.getData().substring(7);
+            if (callbackLang.startsWith("1")) {
                 List<Object> objs = telegramService.createCommandReceived(callbackQuery);
                 Integer messageId = execute((SendMessage) objs.get(0)).getMessageId();
                 eventService.createEvent((User) objs.get(1), Long.valueOf(messageId));
+            } else {
+                SendMessage sendMessage = telegramService.makeMainAction(update);
+                if (sendMessage != null) {
+                    execute(sendMessage);
+                }
             }
-            if ("/list".equals(messageText)) {
-                execute(telegramService.listCommandReceived(callbackQuery));
+        }
+        if (callbackData.startsWith("city-")) {
+            Validable v = telegramService.chooseCity(update);
+            if (v.getClass().equals(SendMessage.class)) {
+                execute((SendMessage) v);
             }
-            if ("/search".equals(messageText)) {
-                execute(telegramService.searchCommandReceived(callbackQuery));
-            }
-            if ("/lang".equals(messageText)) {
-                execute(telegramService.chooseLanguageCommandReceived(message));
-            }
-            if(!messageText.startsWith("/")){
+        }
+        if (callbackData.startsWith("category-")) {
+            if (callbackData.endsWith("null")) {
                 List<Validable> messages = telegramService.handleDefaultMessages(update);
-                if(messages != null){
+                if (messages != null) {
                     for (Validable m : messages) {
-                        if(m.getClass().equals(SendMessage.class)){
+                        if (m.getClass().equals(SendMessage.class)) {
                             execute((SendMessage) m);
                         }
-                        if(m.getClass().equals(SendPhoto.class)){
-                            execute((SendPhoto) m);
-                        }
                     }
                 }
+            } else {
+                execute(telegramService.chooseCategory(update));
             }
         }
-        if(message != null && message.hasLocation()){
-            List<Validable> messages = telegramService.handleDefaultMessages(update);
-            if(messages != null){
-                for (Validable m : messages) {
-                    if(m.getClass().equals(SendMessage.class)){
-                        execute((SendMessage) m);
-                    }
-                }
-            }
-        }
-        if(message != null && message.hasPhoto()){
-            List<Validable> messages = telegramService.handleDefaultMessages(update);
-            if(messages != null){
-                for (Validable m : messages) {
-                    if(m.getClass().equals(SendMessage.class)){
-                        execute((SendMessage) m);
-                    }
-                    if(m.getClass().equals(SendPhoto.class)){
-                        execute((SendPhoto) m);
+        if (callbackData.startsWith("eventAction-")) {
+            List<SendMessage> messages = telegramService.makeEventAction(update);
+            if (messages != null) {
+                for (SendMessage m : messages) {
+                    if (m != null) {
+                        execute(m);
                     }
                 }
             }
