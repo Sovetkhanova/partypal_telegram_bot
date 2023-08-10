@@ -216,3 +216,4 @@ create table partypal_tg.document(
 );
 alter table partypal_tg.document add column size bigint;
 alter table partypal_event.event add column document_id bigint references partypal_tg.document (id) on delete set null;
+alter table partypal_user.user_account add column actual_event_id bigint references partypal_event.event(id) on delete set null ;
