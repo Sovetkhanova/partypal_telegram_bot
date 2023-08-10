@@ -1,5 +1,6 @@
 package com.example.partypal.models.entities.users;
 
+import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.UserEventLink;
 import com.example.partypal.models.entities.base.BaseEntity;
 import com.example.partypal.models.entities.base.City;
@@ -65,8 +66,14 @@ public class User extends BaseEntity {
     @Column(name = "telegram_username")
     private String telegramUsername;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "actual_event_id")
+    @ToString.Exclude
+    private Event actualEvent;
+
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     @Builder.Default
+    @ToString.Exclude
     private List<UserEventLink> userEventLinks = new ArrayList<>();
 
     @Override

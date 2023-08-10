@@ -19,6 +19,7 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
     private final EventRepository eventRepository;
     private final CountryRepository countryRepository;
     private final UserEventLinkRepository userEventLinkRepository;
+    private final UserService userService;
 
     @Override
     @Transactional
@@ -28,7 +29,10 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
                 .tgId(messageId)
                 .country(countryRepository.findById(1L).orElse(null))
                 .build();
-        return eventRepository.saveAndFlush(event);
+        Event eventSaved =  eventRepository.saveAndFlush(event);
+        user.setActualEvent(eventSaved);
+        userService.saveUser(user);
+        return eventSaved;
     }
 
     @Override

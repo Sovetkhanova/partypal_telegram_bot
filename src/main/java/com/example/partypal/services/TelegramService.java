@@ -15,7 +15,7 @@ public interface TelegramService {
 
     SendMessage listCommandReceived(CallbackQuery callbackQuery);
 
-    List<Object> createCommandReceived(CallbackQuery callbackQuery);
+    SendMessage createCommandReceived(CallbackQuery callbackQuery);
 
     SendMessage searchCommandReceived(CallbackQuery callbackQuery);
 
@@ -31,13 +31,11 @@ public interface TelegramService {
 
     SendMessage makeMainAction(Update update);
 
-    Validable chooseCity(Update update);
+    List<Validable> chooseCity(Update update);
 
-    SendMessage chooseCategory(Update update);
+    SendMessage chooseCategoryForSearch(Update update);
 
     List<Validable> handleDefaultMessages(Update update);
-
-    SendMessage sendChoosingActionKeyboard(Message message, String lang);
 
     SendMessage sendEventActionButtons(CallbackQuery callbackQuery, User user, Event event);
 

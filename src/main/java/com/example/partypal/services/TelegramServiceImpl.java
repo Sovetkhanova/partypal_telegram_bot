@@ -28,6 +28,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,7 +45,7 @@ public class TelegramServiceImpl implements TelegramService {
     private final StateRepository stateRepository;
     private final GeocoderService geocoderService;
     private final UserEventLinkRepository userEventLinkRepository;
-    private final DocumentRepository documentRepository;
+    private final DocumentServiceImpl documentService;
 
     @Override
     public SendMessage startCommandReceived(Message message) {
@@ -210,52 +212,53 @@ public class TelegramServiceImpl implements TelegramService {
         long actionId = Long.parseLong(parts[1].replaceAll("\\D", ""));
         long userId = Long.parseLong(parts[2].replaceAll("\\D", ""));
         long eventId = Long.parseLong(parts[3].replaceAll("\\D", ""));
-        switch ((int) actionId){
+        switch ((int) actionId) {
             case 0:
-                sendMessageList.add(editCommandReceived(update));
+                sendMessageList.add(editCommandReceived(userId, eventId, update));
                 break;
             case 1:
                 sendMessageList.add(deleteCommandReceived(userId, eventId, update));
+                sendMessageList.add(sendChoosingActionButtons(callbackQuery));
                 break;
             case 2:
                 sendMessageList.add(remarkCommandReceived(userId, eventId, update));
+                sendMessageList.add(sendChoosingActionButtons(callbackQuery));
                 break;
             case 3:
                 sendMessageList.add(deleteRemarkCommandReceived(userId, eventId, update));
+                sendMessageList.add(sendChoosingActionButtons(callbackQuery));
                 break;
             default:
                 return null;
         }
-        sendMessageList.add(sendChoosingActionButtons(callbackQuery));
         return sendMessageList;
     }
 
     @Override
-    @Transactional
     public void handlePhoto(Message message) {
-        Optional<Event> optionalEvent = eventService.findEventByMessageId((long) (message.getMessageId() - 1));
-        if(optionalEvent.isPresent()){
+        User user = userService.getOrCreateUser(message.getFrom());
+        Event event = user.getActualEvent();
+        if (event != null) {
             List<PhotoSize> photoSizes = message.getPhoto();
             List<Document> s = new ArrayList<>();
-            PhotoSize minPS = photoSizes.get(0);
-            int minId = 0;
+            PhotoSize maxPS = photoSizes.get(0);
+            int maxId = 0;
             for (int i = 0; i < photoSizes.size(); i++) {
                 Document file = Document.builder()
                         .tgId(photoSizes.get(i).getFileId())
                         .tgUniqueId(photoSizes.get(i).getFileUniqueId())
                         .size(photoSizes.get(i).getFileSize().longValue())
-                        .event(optionalEvent.get())
-                        .name(optionalEvent.get().getName())
+                        .event(event)
+                        .name(event.getName())
                         .build();
-                if(minPS.getFileSize() > photoSizes.get(i).getFileSize()){
-                    minPS = photoSizes.get(i);
-                    minId = i;
+                if (maxPS.getFileSize() < photoSizes.get(i).getFileSize()) {
+                    maxPS = photoSizes.get(i);
+                    maxId = i;
                 }
                 s.add(file);
             }
-            documentRepository.saveAll(s);
-            Event event = optionalEvent.get();
-            event.setDocument(s.get(minId));
+            List<Document> documentList = documentService.saveAll(s);
+            event.setDocument(documentList.get(maxId));
             eventService.saveEvent(event);
         }
     }
@@ -263,18 +266,16 @@ public class TelegramServiceImpl implements TelegramService {
     public SendMessage deleteRemarkCommandReceived(long userId, long eventId, Update update) {
         Message message = (update.getMessage() == null) ? update.getCallbackQuery().getMessage() : update.getMessage();
         Optional<User> userOptional = userService.findUserById(userId);
-        if(userOptional.isPresent()){
+        if (userOptional.isPresent()) {
             User user = userOptional.get();
             Optional<Event> eventOptional = eventRepository.findById(eventId);
-            if(eventOptional.isPresent()){
+            if (eventOptional.isPresent()) {
                 userService.deleteRemark(userId, eventId);
-                return createMessage(message, getTextByLanguage(user.getLang(), "EVENT.DELETED") ,false);
-            }
-            else {
+                return createMessage(message, getTextByLanguage(user.getLang(), "EVENT.DELETED"), false);
+            } else {
                 return null;
             }
-        }
-        else {
+        } else {
             return null;
         }
     }
@@ -283,25 +284,22 @@ public class TelegramServiceImpl implements TelegramService {
     public SendMessage remarkCommandReceived(long userId, long eventId, Update update) {
         Message message = (update.getMessage() == null) ? update.getCallbackQuery().getMessage() : update.getMessage();
         Optional<User> userOptional = userService.findUserById(userId);
-        if(userOptional.isPresent()){
+        if (userOptional.isPresent()) {
             User user = userOptional.get();
             Optional<Event> eventOptional = eventRepository.findById(eventId);
-            if(eventOptional.isPresent()){
-                if(!userEventLinkRepository.existsByUser_IdAndEvent_Id(userId, eventId)){
+            if (eventOptional.isPresent()) {
+                if (!userEventLinkRepository.existsByUser_IdAndEvent_Id(userId, eventId)) {
                     UserEventLink userEventLink = UserEventLink.builder()
                             .user(user)
                             .event(eventOptional.get())
                             .build();
                     userEventLinkRepository.save(userEventLink);
-                    return createMessage(message, getTextByLanguage(user.getLang(), "CREATED") ,false);
-                }
-                else return null;
-            }
-            else {
+                    return createMessage(message, getTextByLanguage(user.getLang(), "CREATED"), false);
+                } else return null;
+            } else {
                 return null;
             }
-        }
-        else {
+        } else {
             return null;
         }
     }
@@ -310,18 +308,111 @@ public class TelegramServiceImpl implements TelegramService {
     public SendMessage deleteCommandReceived(long userId, long eventId, Update update) {
         Message message = (update.getMessage() == null) ? update.getCallbackQuery().getMessage() : update.getMessage();
         Optional<User> userOptional = userService.findUserById(userId);
-        if(userOptional.isPresent()){
+        if (userOptional.isPresent()) {
             eventRepository.deleteById(eventId);
-            return createMessage(message, getTextByLanguage(userOptional.get().getLang(), "EVENT.DELETED") ,false);
-        }
-        else {
+            return createMessage(message, getTextByLanguage(userOptional.get().getLang(), "EVENT.DELETED"), false);
+        } else {
             return null;
         }
     }
 
-    private SendMessage editCommandReceived(Update update) {
+    private SendMessage editCommandReceived(long userId, long eventId, Update update) {
+        Optional<User> optionalUser = userService.findUserById(userId);
         Message message = (update.getMessage() != null) ? update.getMessage() : update.getCallbackQuery().getMessage();
-        return createMessage(message, "404", false);
+        Optional<Event> eventOptional = eventRepository.findById(eventId);
+        List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        if (optionalUser.isPresent() && eventOptional.isPresent()) {
+            User user = optionalUser.get();
+            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_UPDATE.name()));
+            userService.saveUser(user);
+            String lang = user.getLang();
+            String answer;
+            List<String> actions = getEventVars(lang);
+            actions.remove(actions.size() - 1);
+            for (int i = 0; i < actions.size(); i++) {
+                InlineKeyboardButton button = new InlineKeyboardButton(actions.get(i));
+                button.setCallbackData("edit-" + i + "u-" + userId + "e-" + eventId);
+                row.add(button);
+                inlineButtons.add(row);
+                row = new ArrayList<>();
+
+            }
+            InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+            keyboardMarkup.setKeyboard(inlineButtons);
+            answer = getTextByLanguage(lang, "CHOOSE.WHAT.TO.EDIT");
+            SendMessage messageReturn = createMessage(message, answer, false);
+            messageReturn.setReplyMarkup(keyboardMarkup);
+            return messageReturn;
+        } else {
+            return null;
+        }
+    }
+
+    public Validable chooseEditCommand(Update update) {
+        CallbackQuery callbackQuery = update.getCallbackQuery();
+        String callbackData = callbackQuery.getData();
+        Pattern pattern = Pattern.compile("^edit-(\\d+)u-(\\d+)e-(\\d+)$");
+        Matcher matcher = pattern.matcher(callbackData);
+        Event event;
+        String answer = null;
+        if (matcher.find()) {
+            int i = Integer.parseInt(matcher.group(1));
+            int userId = Integer.parseInt(matcher.group(2));
+            int eventId = Integer.parseInt(matcher.group(3));
+            System.out.println(i);
+            System.out.println(userId);
+            System.out.println(eventId);
+            Optional<Event> eventOptional = eventRepository.findById((long) eventId);
+            Optional<User> optionalUser = userService.findUserById((long) userId);
+            if (eventOptional.isPresent() && optionalUser.isPresent()) {
+                User user = optionalUser.get();
+                event = eventOptional.get();
+                if (event.getCreatedUser().getId().equals((long) userId)) {
+                    user.setActualEvent(event);
+                    switch (i) {
+                        case 0:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_UPDATE_NAME_SELECT.name()));
+                            answer = getTextByLanguage(user.getLang(), "EVENT.NAME");
+                            break;
+                        case 1:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_UPDATE_DESCRIPTION_SELECT.name()));
+                            answer = getTextByLanguage(user.getLang(), "EVENT.DESCRIPTION");
+                            break;
+                        case 2:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_UPDATE_REQUIREMENTS_SELECT.name()));
+                            answer = getTextByLanguage(user.getLang(), "EVENT.REQUIREMENTS");
+                            break;
+                        case 3:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_UPDATE_CITY_SELECT.name()));
+                            userService.saveUser(user);
+                            return cityChoose(callbackQuery.getMessage(), user.getLang());
+                        case 4:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_UPDATE_LOCATION_SELECT.name()));
+                            answer = getTextByLanguage(user.getLang(), "CHOOSE.LOCATION");
+                            break;
+                        case 5:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_DATE_SELECT.name()));
+                            userService.saveUser(user);
+                            return sendDateSelectionKeyboard(callbackQuery.getMessage().getChatId(), user.getLang());
+                        case 6:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_TIME_SELECT.name()));
+                            userService.saveUser(user);
+                            return sendTimeSelectionKeyboard(callbackQuery.getMessage().getChatId(), user.getLang());
+                        default:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_UPDATE.name()));
+                            break;
+                    }
+                    userService.saveUser(user);
+                }
+            }
+
+        }
+        if (answer != null) {
+            return createMessage(callbackQuery.getMessage(), answer, false);
+        } else {
+            return sendChoosingActionButtons(callbackQuery);
+        }
     }
 
 
@@ -330,7 +421,7 @@ public class TelegramServiceImpl implements TelegramService {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackLang = callbackQuery.getData().substring(7);
         if (callbackLang.startsWith("1")) {
-            return (SendMessage) createCommandReceived(callbackQuery).get(0);
+            return createCommandReceived(callbackQuery);
         }
         if (callbackLang.startsWith("2")) {
             return searchCommandReceived(callbackQuery);
@@ -346,7 +437,7 @@ public class TelegramServiceImpl implements TelegramService {
         User user = userService.getOrCreateUser(userTg);
         Map<String, List<Event>> events = eventService.getUserEvents(user);
         List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
-        if(events == null){
+        if (events == null) {
             return null;
         }
         List<String> buttonsTexts = new ArrayList<>();
@@ -394,16 +485,23 @@ public class TelegramServiceImpl implements TelegramService {
         }
     }
 
+    private List<String> getEventVars(String lang) {
+        List<String> eventVars = new ArrayList<>();
+        eventVars.add(0, getTextByLanguage(lang, "EVENT.NAME"));
+        eventVars.add(1, getTextByLanguage(lang, "EVENT.DESCRIPTION"));
+        eventVars.add(2, getTextByLanguage(lang, "EVENT.REQUIREMENTS"));
+        eventVars.add(3, getTextByLanguage(lang, "EVENT.CITY"));
+        eventVars.add(4, getTextByLanguage(lang, "EVENT.PLACE"));
+        eventVars.add(5, getTextByLanguage(lang, "EVENT.DATE"));
+        eventVars.add(6, getTextByLanguage(lang, "EVENT.TIME"));
+        eventVars.add(7, getTextByLanguage(lang, "EVENT.CREATED.BY"));
+        return eventVars;
+    }
+
     private String createEventCardsMessage(String lang, List<Event> eventCards) {
         StringBuilder messageText = new StringBuilder();
-        List<String> buttonsTexts = new ArrayList<>();
-        buttonsTexts.add(getTextByLanguage(lang, "EVENT.DESCRIPTION"));
-        buttonsTexts.add(getTextByLanguage(lang, "EVENT.REQUIREMENTS"));
-        buttonsTexts.add(getTextByLanguage(lang, "EVENT.CITY"));
-        buttonsTexts.add(getTextByLanguage(lang, "EVENT.PLACE"));
-        buttonsTexts.add(getTextByLanguage(lang, "EVENT.DATE"));
-        buttonsTexts.add(getTextByLanguage(lang, "EVENT.TIME"));
-        buttonsTexts.add(getTextByLanguage(lang, "EVENT.CREATED.BY"));
+        List<String> buttonsTexts = getEventVars(lang);
+        buttonsTexts.remove(0);
         for (Event eventCard : eventCards) {
             boolean isNeedToTranslate = (!eventCard.getDetectedLanguage().equals(lang));
             String name = (!isNeedToTranslate) ? eventCard.getName() + getTextByLanguage("global", "URA") : translatorService.translateText(lang, eventCard.getName());
@@ -444,6 +542,8 @@ public class TelegramServiceImpl implements TelegramService {
         String answer;
         if (eventOptional.isPresent()) {
             User user = userService.getOrCreateUser(callbackQuery.getFrom());
+            user.setActualEvent(eventOptional.get());
+            userService.saveUser(user);
             answer = createEventCardsMessage(user.getLang(), Collections.singletonList(eventOptional.get()));
             sendMessageList.add(createMessage(callbackQuery.getMessage(), answer, false));
             if(eventOptional.get().getDocument() != null){
@@ -455,19 +555,12 @@ public class TelegramServiceImpl implements TelegramService {
     }
 
     @Override
-    public List<Object> createCommandReceived(CallbackQuery callbackQuery) {
+    public SendMessage createCommandReceived(CallbackQuery callbackQuery) {
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
         user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED.name()));
         userService.saveUser(user);
-        SendMessage message = enterEventName(callbackQuery.getMessage(), user.getLang());
-        List<Object> objs = new ArrayList<>();
-        objs.add(message);
-        objs.add(user);
-        return objs;
-    }
-
-    private SendMessage enterEventName(Message message, String lang) {
-        return createMessage(message, getTextByLanguage(lang, "EVENT.NAME"), false);
+        eventService.createEvent(user, Long.valueOf(callbackQuery.getMessage().getMessageId()));
+        return createMessage(callbackQuery.getMessage(), getTextByLanguage(user.getLang(), "EVENT.NAME"), false);
     }
 
     @Override
@@ -503,26 +596,37 @@ public class TelegramServiceImpl implements TelegramService {
         return sendMessage;
     }
 
-    public Validable chooseCity(Update update) {
+    public List<Validable> chooseCity(Update update) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String callbackCityId = callbackQuery.getData().substring(5);
         User user = userService.getOrCreateUser(callbackQuery.getFrom());
-        if (user.getCurrent_state().getCode().equals(State.StateCode.EVENT_CREATED_CATEGORY_SELECTED.name())) {
-            Optional<Event> eventOptional = eventService.findEventByMessageId((long) (callbackQuery.getMessage().getMessageId() - 1));
-            if (eventOptional.isPresent()) {
-                City city = cityRepository.findById(Long.valueOf(callbackCityId)).orElse(null);
-                Event event = eventOptional.get();
-                event.setCity(city);
-                event.setTgId(Long.valueOf(callbackQuery.getMessage().getMessageId()));
-                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_CITY_SELECTED.name()));
-                userService.saveUser(user);
-                eventService.saveEvent(eventOptional.get());
-                return createMessage(callbackQuery.getMessage(), getTextByLanguage(user.getLang(), "CHOOSE.LOCATION"), false);
-            } else {
-                return handleDefaultMessages(update).get(0);
+        State.StateCode state = State.StateCode.valueOf(user.getCurrent_state().getCode());
+        Event event = user.getActualEvent();
+        if (event != null) {
+            City city = cityRepository.findById(Long.valueOf(callbackCityId)).orElse(null);
+            event.setCity(city);
+            String answer;
+            switch (state) {
+                case EVENT_CREATED_CATEGORY_SELECTED:
+                    user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_CITY_SELECTED.name()));
+                    userService.saveUser(user);
+                    eventService.saveEvent(event);
+                    answer = getTextByLanguage(user.getLang(), "CHOOSE.LOCATION");
+                    break;
+                case EVENT_UPDATE_CITY_SELECT :
+                case EVENT_UPDATE:
+                    user.setCurrent_state(stateRepository.findByCode(State.StateCode.DEFAULT.name()));
+                    userService.saveUser(user);
+                    eventService.saveEvent(event);
+                    callbackQuery.setData("event-" + event.getId());
+                    update.setCallbackQuery(callbackQuery);
+                    return getEvent(update);
+                default:
+                    return Collections.singletonList(chooseCategory(callbackQuery.getMessage(), user.getLang(), callbackCityId));
             }
+            return Collections.singletonList(createMessage(callbackQuery.getMessage(), answer, false));
         } else {
-            return chooseCategory(callbackQuery.getMessage(), user.getLang(), callbackCityId);
+            return Collections.singletonList(chooseCategory(callbackQuery.getMessage(), user.getLang(), callbackCityId));
         }
     }
 
@@ -553,7 +657,7 @@ public class TelegramServiceImpl implements TelegramService {
         return sendMessage;
     }
 
-    public SendMessage chooseCategory(Update update) {
+    public SendMessage chooseCategoryForSearch(Update update) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String[] parts = callbackQuery.getData().split("-");
         long categoryId = Long.parseLong(parts[1].replaceAll("\\D", ""));
@@ -587,6 +691,30 @@ public class TelegramServiceImpl implements TelegramService {
         return message;
     }
 
+    private List<Validable> handleMainCommands(CallbackQuery callbackQuery){
+        String[] actionsArray = new String[]{"EVENT.CREATE", "EVENT.SEARCH", "EVENT.MINE"};
+        List<String> actions = new ArrayList<>();
+        for (String action : actionsArray) {
+            String actionText = getTextByLanguage("ru", action);
+            actions.add(actionText);
+        }
+        String messageText = callbackQuery.getMessage().getText();
+        for (int i = 0; i < actions.size(); i++) {
+            if (messageText != null) {
+                if (messageText.equals(actions.get(0))) {
+                    return Collections.singletonList(createCommandReceived(callbackQuery));
+                }
+                if (messageText.equals(actions.get(1))) {
+                    return Collections.singletonList(searchCommandReceived(callbackQuery));
+                }
+                if (messageText.equals(actions.get(2))) {
+                    return Collections.singletonList(listCommandReceived(callbackQuery));
+                }
+            }
+        }
+        return null;
+    }
+
     @Override
     public List<Validable> handleDefaultMessages(Update update) {
         List<Validable> sendMessageList = new ArrayList<>();
@@ -602,65 +730,53 @@ public class TelegramServiceImpl implements TelegramService {
             callbackQuery.setMessage(message);
             callbackQuery.setFrom(message.getFrom());
         }
-        String[] actionsArray = new String[]{"EVENT.CREATE", "EVENT.SEARCH", "EVENT.MINE"};
-        List<String> actions = new ArrayList<>();
-        for (String action : actionsArray) {
-            String actionText = getTextByLanguage("ru", action);
-            actions.add(actionText);
-        }
         String messageText = message.getText();
-        for (int i = 0; i < actions.size(); i++) {
-            if (messageText != null) {
-                if (messageText.equals(actions.get(0))) {
-                    return Collections.singletonList((SendMessage) createCommandReceived(callbackQuery).get(0));
-                }
-                if (messageText.equals(actions.get(1))) {
-                    return Collections.singletonList(searchCommandReceived(callbackQuery));
-                }
-                if (messageText.equals(actions.get(2))) {
-                    return Collections.singletonList(listCommandReceived(callbackQuery));
-                }
+        if(messageText != null){
+            sendMessageList = handleMainCommands(callbackQuery);
+            if(sendMessageList != null && !sendMessageList.isEmpty()){
+                return sendMessageList;
+            }
+            else {
+                sendMessageList = new ArrayList<>();
             }
         }
-
         User user = userService.getOrCreateUser(userTemp);
         State.StateCode state = State.StateCode.valueOf(user.getCurrent_state().getCode());
-        Long id = (state.equals(State.StateCode.EVENT_CREATED_CITY_SELECTED)) ? 2L : 1L;
-        Optional<Event> eventOptional = eventService.findEventByMessageId(message.getMessageId() - id);
-        Event event;
-        if (eventOptional.isPresent()) {
-            event = eventOptional.get();
-        } else {
+        Event event = user.getActualEvent();
+        if (event == null) {
             return Collections.singletonList(sendChoosingActionButtons(callbackQuery));
         }
         String answer = " some ";
         switch (state) {
             case EVENT_CREATED:
                 event.setName(messageText);
-                event.setTgId((long) (message.getMessageId() + 1));
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_NAME_SELECTED.name()));
                 answer = getTextByLanguage(user.getLang(), "EVENT.DESCRIPTION");
                 break;
             case EVENT_CREATED_NAME_SELECTED:
                 event.setDescription(messageText);
-                event.setTgId((long) (message.getMessageId() + 1));
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_DESCRIPTION_SELECTED.name()));
                 answer = getTextByLanguage(user.getLang(), "EVENT.REQUIREMENTS");
                 break;
             case EVENT_CREATED_DESCRIPTION_SELECTED:
                 event.setRequirement(messageText);
-                event.setTgId((long) (message.getMessageId()));
                 user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_REQUIREMENTS_SELECTED.name()));
                 userService.saveUser(user);
                 eventService.saveEvent(event);
                 return Collections.singletonList(chooseCategory(message, user.getLang(), null));
             case EVENT_CREATED_REQUIREMENTS_SELECTED:
-                Long categoryId = Long.parseLong(callbackQuery.getData().split("-")[1].replaceAll("\\D", ""));
-                event.setCategory(categoryRepository.findById(categoryId).orElse(null));
-                event.setTgId((long) (message.getMessageId()));
-                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_CATEGORY_SELECTED.name()));
-                userService.saveUser(user);
-                eventService.saveEvent(event);
+                long categoryId;
+                try {
+                    categoryId = Long.parseLong(callbackQuery.getData().split("-")[1].replaceAll("\\D", ""));
+                    event.setCategory(categoryRepository.findById(categoryId).orElse(null));
+                }
+                catch (Exception ignored){
+                }
+                finally {
+                    user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_CATEGORY_SELECTED.name()));
+                    userService.saveUser(user);
+                    eventService.saveEvent(event);
+                }
                 return Collections.singletonList(cityChoose(message, user.getLang()));
             case EVENT_CREATED_CATEGORY_SELECTED:
                 return Collections.singletonList(cityChoose(message, user.getLang()));
@@ -669,80 +785,102 @@ public class TelegramServiceImpl implements TelegramService {
                     Location location = message.getLocation();
                     event.setPlace(geocoderService.getPlace(location.getLongitude(), location.getLatitude()));
                 } else event.setPlace(messageText);
-                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_LOCATION_SELECTED.name()));
-                event.setTgId((long) (message.getMessageId() + 1));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_DATE_SELECT.name()));
                 userService.saveUser(user);
                 eventService.saveEvent(event);
                 return Collections.singletonList(sendDateSelectionKeyboard(message.getChatId(), user.getLang()));
-            case EVENT_CREATED_LOCATION_SELECTED:
+            case EVENT_DATE_SELECT:
                 java.sql.Date date;
-                if(messageText == null){
+                if (messageText == null) {
                     date = java.sql.Date.valueOf(LocalDate.now());
-                }
-                else {
+                } else {
                     try {
                         date = java.sql.Date.valueOf(messageText);
-                    }
-                    catch (java.lang.IllegalArgumentException e){
+                    } catch (java.lang.IllegalArgumentException e) {
                         date = java.sql.Date.valueOf(LocalDate.now());
                     }
                 }
                 event.setDate(date);
-                event.setTgId((long) (message.getMessageId() + 1));
-                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_DATE_SELECTED.name()));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_TIME_SELECT.name()));
                 userService.saveUser(user);
                 eventService.saveEvent(event);
                 return Collections.singletonList(sendTimeSelectionKeyboard(message.getChatId(), user.getLang()));
-            case EVENT_CREATED_DATE_SELECTED:
+            case EVENT_TIME_SELECT:
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
                 LocalTime time;
-                if(messageText == null){
+                if (messageText == null) {
                     time = LocalTime.parse(LocalTime.now().toString(), formatter);
-                }
-                else {
+                } else {
                     try {
                         time = LocalTime.parse(messageText, formatter);
-                    }
-                    catch (Exception e){
+                    } catch (Exception e) {
                         time = LocalTime.now();
                     }
                 }
                 event.setTime(java.sql.Time.valueOf(time));
-                event.setTgId((long) (message.getMessageId() + 1));
-                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_TIME_SELECTED.name()));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_PHOTO_SELECT.name()));
                 event.setDetectedLanguage(translatorService.detectTextsLang(event.getName() + " " + event.getDescription() + " " + event.getRequirement()));
                 answer = getTextByLanguage(user.getLang(), "UPLOAD.PHOTO");
                 break;
-            case EVENT_CREATED_TIME_SELECTED:
-                if(message.hasPhoto()){
+            case EVENT_CREATED_PHOTO_SELECT:
+                if (message.hasPhoto()) {
                     handlePhoto(message);
                 }
                 callbackQuery.setData("event-" + event.getId());
                 update.setCallbackQuery(callbackQuery);
-                event.setTgId((long) (message.getMessageId() + 1));
-                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_PHOTO_SELECTED.name()));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.DEFAULT.name()));
                 userService.saveUser(user);
-                eventService.saveEvent(event);
                 return getEvent(update);
-            case EVENT_CREATED_PHOTO_SELECTED:
+            case DEFAULT:
                 return Collections.singletonList(sendChoosingActionButtons(callbackQuery));
             case EVENT_UPDATE:
-            case ENROLLED_EVENT_SELECTED:
-            case SOME_EVENT_SELECTED:
-            case EVENT_DELETE:
+                sendMessageList.add(chooseEditCommand(update));
+                return sendMessageList;
             case EVENT_UPDATE_CITY_SELECT:
+                return Collections.singletonList(cityChoose(message, user.getLang()));
             case EVENT_UPDATE_CATEGORY_SELECT:
-            case EVENT_UPDATE_LOCATION_SELECT:
-            case EVENT_UPDATE_NAME_SELECT:
-            case EVENT_UPDATE_DESCRIPTION_SELECT:
-            case EVENT_UPDATE_REQUIREMENTS_SELECT:
-            case EVENT_UPDATE_DATE_SELECT:
-            case EVENT_UPDATE_TIME_SELECT:
-            case MINE_EVENT_SELECTED:
-            case REMARK_CREATE:
-            case ENROLL_CREATE:
-            case REMARK_DELETE:
+                Long catId = Long.parseLong(callbackQuery.getData().split("-")[1].replaceAll("\\D", ""));
+                event.setCategory(categoryRepository.findById(catId).orElse(null));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.DEFAULT.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                answer = createEventCardsMessage(user.getLang(), Collections.singletonList(event));
                 break;
+            case EVENT_UPDATE_LOCATION_SELECT:
+                if (message.hasLocation()) {
+                    Location location = message.getLocation();
+                    event.setPlace(geocoderService.getPlace(location.getLongitude(), location.getLatitude()));
+                } else event.setPlace(messageText);
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.DEFAULT.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                callbackQuery.setData("event-" + event.getId());
+                update.setCallbackQuery(callbackQuery);
+                return getEvent(update);
+            case EVENT_UPDATE_NAME_SELECT:
+                event.setName(messageText);
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.DEFAULT.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                callbackQuery.setData("event-" + event.getId());
+                update.setCallbackQuery(callbackQuery);
+                return getEvent(update);
+            case EVENT_UPDATE_DESCRIPTION_SELECT:
+                event.setDescription(messageText);
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.DEFAULT.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                callbackQuery.setData("event-" + event.getId());
+                update.setCallbackQuery(callbackQuery);
+                return getEvent(update);
+            case EVENT_UPDATE_REQUIREMENTS_SELECT:
+                event.setRequirement(messageText);
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.DEFAULT.name()));
+                userService.saveUser(user);
+                eventService.saveEvent(event);
+                callbackQuery.setData("event-" + event.getId());
+                update.setCallbackQuery(callbackQuery);
+                return getEvent(update);
             default:
                 sendChoosingActionButtons(callbackQuery);
                 break;
@@ -751,26 +889,6 @@ public class TelegramServiceImpl implements TelegramService {
         eventService.saveEvent(event);
         sendMessageList.add(createMessage(message, answer, false));
         return sendMessageList;
-    }
-
-    @Override
-    public SendMessage sendChoosingActionKeyboard(Message message, String lang) {
-        List<KeyboardRow> keyboardRows = new ArrayList<>();
-        String answer;
-        String[] actions = new String[]{"EVENT.CREATE", "EVENT.SEARCH", "EVENT.MINE"};
-        KeyboardRow row = new KeyboardRow();
-        for (String action : actions) {
-            String actionText = getTextByLanguage(lang, action);
-            row.add(new KeyboardButton(actionText));
-        }
-        keyboardRows.add(row);
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        keyboardMarkup.setKeyboard(keyboardRows);
-
-        answer = getTextByLanguage(lang, "CREATED");
-        SendMessage messageReturn = createMessage(message, answer, false);
-        messageReturn.setReplyMarkup(keyboardMarkup);
-        return messageReturn;
     }
 
     private SendMessage sendDateSelectionKeyboard(Long chatId, String lang) {

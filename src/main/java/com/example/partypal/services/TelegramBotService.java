@@ -1,6 +1,5 @@
 package com.example.partypal.services;
 
-import com.example.partypal.models.entities.users.User;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,7 +24,6 @@ public class TelegramBotService extends TelegramLongPollingBot {
     private String token;
 
     private final TelegramService telegramService;
-    private final EventService eventService;
 
     @Override
     public String getBotUsername() {
@@ -100,9 +98,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
             execute(telegramService.startCommandReceived(message));
         }
         if ("/create".equals(messageText)) {
-            List<Object> objs = telegramService.createCommandReceived(callbackQuery);
-            Integer messageId = execute((SendMessage) objs.get(0)).getMessageId();
-            eventService.createEvent((User) objs.get(1), Long.valueOf(messageId));
+            execute(telegramService.createCommandReceived(callbackQuery));
         }
         if ("/list".equals(messageText)) {
             execute(telegramService.listCommandReceived(callbackQuery));
@@ -138,22 +134,17 @@ public class TelegramBotService extends TelegramLongPollingBot {
             execute(telegramService.sendChoosingActionButtons(callbackQuery));
         }
         if (callbackData.startsWith("action-")) {
-            String callbackLang = callbackQuery.getData().substring(7);
-            if (callbackLang.startsWith("1")) {
-                List<Object> objs = telegramService.createCommandReceived(callbackQuery);
-                Integer messageId = execute((SendMessage) objs.get(0)).getMessageId();
-                eventService.createEvent((User) objs.get(1), Long.valueOf(messageId));
-            } else {
-                SendMessage sendMessage = telegramService.makeMainAction(update);
-                if (sendMessage != null) {
-                    execute(sendMessage);
-                }
+            SendMessage sendMessage = telegramService.makeMainAction(update);
+            if (sendMessage != null) {
+                execute(sendMessage);
             }
         }
         if (callbackData.startsWith("city-")) {
-            Validable v = telegramService.chooseCity(update);
-            if (v.getClass().equals(SendMessage.class)) {
-                execute((SendMessage) v);
+            List<Validable> v = telegramService.chooseCity(update);
+            for (Validable m : v) {
+                if (m.getClass().equals(SendMessage.class)) {
+                    execute((SendMessage) m);
+                }
             }
         }
         if (callbackData.startsWith("category-")) {
@@ -167,7 +158,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
                     }
                 }
             } else {
-                execute(telegramService.chooseCategory(update));
+                execute(telegramService.chooseCategoryForSearch(update));
             }
         }
         if (callbackData.startsWith("eventAction-")) {
@@ -176,6 +167,16 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 for (SendMessage m : messages) {
                     if (m != null) {
                         execute(m);
+                    }
+                }
+            }
+        }
+        if(callbackData.startsWith("edit-")) {
+            List<Validable> messages = telegramService.handleDefaultMessages(update);
+            if (messages != null) {
+                for (Validable m : messages) {
+                    if (m.getClass().equals(SendMessage.class)) {
+                        execute((SendMessage) m);
                     }
                 }
             }
