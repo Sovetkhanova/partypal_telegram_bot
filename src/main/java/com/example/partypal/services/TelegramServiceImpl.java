@@ -447,7 +447,7 @@ public class TelegramServiceImpl implements TelegramService {
         buttonsTexts.add(getTextByLanguage(user.getLang(), "CHOOSE.EVENT"));
 
         for (Event eventCard : events.get("created")) {
-            String buttonText = eventCard.getId() + ". " + eventCard.getName();
+            String buttonText = eventCard.getName() + " - " + eventCard.getDate();
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
             button.setCallbackData("event-" + eventCard.getId());
             List<InlineKeyboardButton> inlineKeyboardButtonsRow = new ArrayList<>();
@@ -679,7 +679,7 @@ public class TelegramServiceImpl implements TelegramService {
                 .collect(Collectors.toList());
         List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
         for (Event eventCard : sortedEvents) {
-            String buttonText = eventCard.getId() + ". " + eventCard.getName() + " - " + eventCard.getDate();
+            String buttonText = eventCard.getName() + " - " + eventCard.getDate();
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
             button.setCallbackData("event-" + eventCard.getId());
             List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
