@@ -446,25 +446,17 @@ public class TelegramServiceImpl implements TelegramService {
         buttonsTexts.add(getTextByLanguage(user.getLang(), "ENROLLED.EVENTS"));
         buttonsTexts.add(getTextByLanguage(user.getLang(), "CHOOSE.EVENT"));
 
-        for (Event eventCard : events.get("created")) {
-            String buttonText = eventCard.getName() + " - " + eventCard.getDate();
-            InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
-            button.setCallbackData("event-" + eventCard.getId());
-            List<InlineKeyboardButton> inlineKeyboardButtonsRow = new ArrayList<>();
-            inlineKeyboardButtonsRow.add(button);
-            inlineButtons.add(inlineKeyboardButtonsRow);
-        }
+        for (List<Event> evts : events.values()) {
+            for (Event eventCard : evts) {
+                String buttonText = eventCard.getDate() + " - " + eventCard.getName();
+                InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
+                button.setCallbackData("event-" + eventCard.getId());
+                List<InlineKeyboardButton> inlineKeyboardButtonsRow = new ArrayList<>();
+                inlineKeyboardButtonsRow.add(button);
+                inlineButtons.add(inlineKeyboardButtonsRow);
+            }
 
-        for (Event eventCard : events.get("enrolled")) {
-            String translatedEventName = (eventCard.getDetectedLanguage().equals(user.getLang())) ? eventCard.getName() : translatorService.translateText(user.getLang(), eventCard.getName());
-            String buttonText = translatedEventName + " - " + eventCard.getDate();
-            InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
-            button.setCallbackData("event-" + eventCard.getId());
-            List<InlineKeyboardButton> inlineKeyboardButtonsRow = new ArrayList<>();
-            inlineKeyboardButtonsRow.add(button);
-            inlineButtons.add(inlineKeyboardButtonsRow);
         }
-
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(inlineButtons);
 
