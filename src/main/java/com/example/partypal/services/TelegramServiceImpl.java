@@ -329,7 +329,7 @@ public class TelegramServiceImpl implements TelegramService {
             String lang = user.getLang();
             String answer;
             List<String> actions = getEventVars(lang);
-            actions.remove(actions.size() - 1);
+            actions.remove(actions.size() - 2);
             for (int i = 0; i < actions.size(); i++) {
                 InlineKeyboardButton button = new InlineKeyboardButton(actions.get(i));
                 button.setCallbackData("edit-" + i + "u-" + userId + "e-" + eventId);
@@ -360,9 +360,6 @@ public class TelegramServiceImpl implements TelegramService {
             int i = Integer.parseInt(matcher.group(1));
             int userId = Integer.parseInt(matcher.group(2));
             int eventId = Integer.parseInt(matcher.group(3));
-            System.out.println(i);
-            System.out.println(userId);
-            System.out.println(eventId);
             Optional<Event> eventOptional = eventRepository.findById((long) eventId);
             Optional<User> optionalUser = userService.findUserById((long) userId);
             if (eventOptional.isPresent() && optionalUser.isPresent()) {
@@ -399,6 +396,10 @@ public class TelegramServiceImpl implements TelegramService {
                             user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_TIME_SELECT.name()));
                             userService.saveUser(user);
                             return sendTimeSelectionKeyboard(callbackQuery.getMessage().getChatId(), user.getLang());
+                        case 7:
+                            user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_PHOTO_SELECT.name()));
+                            answer = getTextByLanguage(user.getLang(), "UPLOAD.PHOTO");
+                            break;
                         default:
                             user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_UPDATE.name()));
                             break;
@@ -495,6 +496,7 @@ public class TelegramServiceImpl implements TelegramService {
         eventVars.add(5, getTextByLanguage(lang, "EVENT.DATE"));
         eventVars.add(6, getTextByLanguage(lang, "EVENT.TIME"));
         eventVars.add(7, getTextByLanguage(lang, "EVENT.CREATED.BY"));
+        eventVars.add(8, getTextByLanguage(lang, "EVENT.PHOTO"));
         return eventVars;
     }
 
@@ -779,6 +781,7 @@ public class TelegramServiceImpl implements TelegramService {
                 }
                 return Collections.singletonList(cityChoose(message, user.getLang()));
             case EVENT_CREATED_CATEGORY_SELECTED:
+            case EVENT_UPDATE_CITY_SELECT:
                 return Collections.singletonList(cityChoose(message, user.getLang()));
             case EVENT_CREATED_CITY_SELECTED:
                 if (message.hasLocation()) {
@@ -818,11 +821,11 @@ public class TelegramServiceImpl implements TelegramService {
                     }
                 }
                 event.setTime(java.sql.Time.valueOf(time));
-                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_CREATED_PHOTO_SELECT.name()));
+                user.setCurrent_state(stateRepository.findByCode(State.StateCode.EVENT_PHOTO_SELECT.name()));
                 event.setDetectedLanguage(translatorService.detectTextsLang(event.getName() + " " + event.getDescription() + " " + event.getRequirement()));
                 answer = getTextByLanguage(user.getLang(), "UPLOAD.PHOTO");
                 break;
-            case EVENT_CREATED_PHOTO_SELECT:
+            case EVENT_PHOTO_SELECT:
                 if (message.hasPhoto()) {
                     handlePhoto(message);
                 }
@@ -836,8 +839,6 @@ public class TelegramServiceImpl implements TelegramService {
             case EVENT_UPDATE:
                 sendMessageList.add(chooseEditCommand(update));
                 return sendMessageList;
-            case EVENT_UPDATE_CITY_SELECT:
-                return Collections.singletonList(cityChoose(message, user.getLang()));
             case EVENT_UPDATE_CATEGORY_SELECT:
                 Long catId = Long.parseLong(callbackQuery.getData().split("-")[1].replaceAll("\\D", ""));
                 event.setCategory(categoryRepository.findById(catId).orElse(null));
