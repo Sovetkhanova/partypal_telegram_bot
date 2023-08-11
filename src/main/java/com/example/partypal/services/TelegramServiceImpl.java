@@ -457,7 +457,7 @@ public class TelegramServiceImpl implements TelegramService {
 
         for (Event eventCard : events.get("enrolled")) {
             String translatedEventName = (eventCard.getDetectedLanguage().equals(user.getLang())) ? eventCard.getName() : translatorService.translateText(user.getLang(), eventCard.getName());
-            String buttonText = eventCard.getId() + ". " + translatedEventName;
+            String buttonText = translatedEventName + " - " + eventCard.getDate();
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
             button.setCallbackData("event-" + eventCard.getId());
             List<InlineKeyboardButton> inlineKeyboardButtonsRow = new ArrayList<>();

@@ -57,7 +57,7 @@ public class UserServiceImpl implements UserService {
                 .userStatus(userStatusRepository.findByCode(UserStatus.Code.ACTIVE.name()))
                 .dateCreated(LocalDate.now())
                 .telegramId(userTg.getId())
-                .telegramUsername(userTg.getUserName())
+                .telegramUsername(((userTg.getUserName()) != null) ? userTg.getUserName() : userTg.getFirstName() + " " + userTg.getLastName())
                 .current_state(stateRepository.findByCode(State.StateCode.USER_CREATED.name()))
                 .lang(language)
                 .lastLoginDateTime(LocalDateTime.now())
