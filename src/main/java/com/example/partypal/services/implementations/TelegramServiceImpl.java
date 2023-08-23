@@ -446,9 +446,8 @@ public class TelegramServiceImpl implements TelegramService {
         buttonsTexts.add(getTextByLanguage(user.getLang(), "ENROLLED.EVENTS"));
         buttonsTexts.add(getTextByLanguage(user.getLang(), "CHOOSE.EVENT"));
 
-        for (List<Event> evts : events.values()) {
-            extractedMethod(evts, inlineButtons);
-
+        for (List<Event> eventList : events.values()) {
+            extractedMethod(eventList, inlineButtons);
         }
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(inlineButtons);
