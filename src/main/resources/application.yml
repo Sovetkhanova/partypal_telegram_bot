@@ -15,43 +15,29 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
-      order_inserts: true
     properties:
       hibernate:
         jdbc:
           time_zone: UTC
         dialect: org.hibernate.dialect.PostgreSQL82Dialect
     show-sql: ${JPA_SHOW_SQL:true}
+    open-in-view: true
   profiles:
     active: ${APP_ENV:dev}
-    properties:
-      hibernate:
-        cache:
-          use_second_level_cache: true
-          use_query_cache: true
   flyway:
     schemas: public
     out-of-order: ${FLYWAY_OUT_OF_ORDER:false}
     validate-on-migrate: true
-flyway:
-  locations: classpath:db/migration
-  url: jdbc:postgresql://${DB_HOST:0.0.0.0}:${DB_PORT:5432}/${DB_NAME:postgres}
-  user: ${DB_USERNAME:postgres}
-  password: ${DB_PASS:postgres}
-  baselineOnMigrate: true
 
 bots:
   telegram:
     name: ${TELEGRAM_BOT_NAME:almaty_partypal_bot}
     token: ${TELEGRAM_BOT_TOKEN:5888573729:AAHkO5pn7EO2LgGs_-mTtBiEYuEAvjqCZZM}
-    enabled: false
 eureka:
   client:
     enabled: ${EUREKA_CLIENT_ENABLED:false}
     serviceUrl:
       defaultZone: ${EUREKA_CLIENT_SERVICE_URL:http://localhost:8761/eureka/}
-    instance:
-    preferIpAddress: true
     fetch-registry: true
 
 microservice-url:

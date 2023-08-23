@@ -1,4 +1,4 @@
-package com.example.partypal.services;
+package com.example.partypal.services.implementations;
 
 import com.example.partypal.daos.repositories.DocumentRepository;
 import com.example.partypal.models.entities.telegram.Document;

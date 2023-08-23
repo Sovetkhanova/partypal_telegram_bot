@@ -1,4 +1,4 @@
-package com.example.partypal.exceptions;
+package com.example.partypal.custom_exceptions;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;

@@ -97,6 +97,27 @@ create table partypal_tg.state
         unique
 );
 
+insert into partypal_tg.state (code) values
+('USER_CREATED'),
+('EVENT_CREATED'),
+('EVENT_CREATED_NAME_SELECTED'),
+('EVENT_CREATED_DESCRIPTION_SELECTED'),
+('EVENT_CREATED_REQUIREMENTS_SELECTED'),
+('EVENT_CREATED_CATEGORY_SELECTED'),
+('EVENT_CREATED_CITY_SELECTED'),
+('EVENT_CREATED_LOCATION_SELECTED'),
+('EVENT_UPDATE'),
+('EVENT_UPDATE_CITY_SELECT'),
+('EVENT_UPDATE_CATEGORY_SELECT'),
+('EVENT_UPDATE_LOCATION_SELECT'),
+('EVENT_UPDATE_NAME_SELECT'),
+('EVENT_UPDATE_DESCRIPTION_SELECT'),
+('EVENT_UPDATE_REQUIREMENTS_SELECT'),
+('DEFAULT'),
+('EVENT_DATE_SELECT'),
+('EVENT_TIME_SELECT'),
+('EVENT_PHOTO_SELECT');
+
 create table partypal_user.gender
 (
     id       bigserial
@@ -135,6 +156,9 @@ create table partypal_user.user_status
     code varchar(255)
         unique
 );
+insert into partypal_user.user_status(name, code) VALUES ('Активный', 'ACTIVE');
+insert into partypal_user.user_status(name, code) VALUES ('Неактивный', 'INACTIVE');
+insert into partypal_user.user_status(name, code) VALUES ('Заблокированный', 'BLOCKED');
 
 create table partypal_user.user_account
 (

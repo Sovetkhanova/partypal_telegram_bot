@@ -1,6 +1,7 @@
-package com.example.partypal.models.entities.base;
+package com.example.partypal.models.entities;
 
 
+import com.example.partypal.models.entities.base.BaseEntityWithCodeAndName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -18,14 +19,5 @@ import javax.persistence.Table;
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_ONLY)
 public class Category extends BaseEntityWithCodeAndName {
-
-    public enum Code {
-        Cinema,
-        Sport,
-        Culture,
-        Restaurant,
-        Education,
-        Party
-    }
 
 }

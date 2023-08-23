@@ -1,5 +1,6 @@
-package com.example.partypal.models.entities.base;
+package com.example.partypal.models.entities;
 
+import com.example.partypal.models.entities.base.BaseEntityWithCodeAndName;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 

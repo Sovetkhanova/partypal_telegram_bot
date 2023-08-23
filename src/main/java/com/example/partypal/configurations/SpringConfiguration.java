@@ -20,9 +20,8 @@ public class SpringConfiguration {
     @Bean("threadPoolTaskExecutor")
     public Executor asyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(70);
+        executor.setCorePoolSize(10);
         executor.setMaxPoolSize(150);
-        executor.setQueueCapacity(10000);
         executor.initialize();
         return executor;
     }
@@ -31,7 +30,7 @@ public class SpringConfiguration {
     public Executor simpleAsyncTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(10);
-        executor.setMaxPoolSize(15);
+        executor.setMaxPoolSize(150);
         executor.initialize();
         return executor;
     }
@@ -39,7 +38,6 @@ public class SpringConfiguration {
     @Bean
     public MessageSource messageSource() {
         ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
-
         messageSource.setBasename("classpath:messages");
         messageSource.setDefaultEncoding("UTF-8");
         return messageSource;

@@ -1,4 +1,4 @@
-package com.example.partypal.services;
+package com.example.partypal.services.implementations;
 
 import com.example.partypal.daos.repositories.StateRepository;
 import com.example.partypal.daos.repositories.UserEventLinkRepository;
@@ -7,8 +7,8 @@ import com.example.partypal.daos.repositories.UserStatusRepository;
 import com.example.partypal.models.entities.telegram.State;
 import com.example.partypal.models.entities.users.User;
 import com.example.partypal.models.entities.users.UserStatus;
+import com.example.partypal.services.UserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
@@ -24,13 +24,9 @@ public class UserServiceImpl implements UserService {
     private final UserEventLinkRepository userEventLinkRepository;
 
     @Override
+    @Transactional
     public User getOrCreateUser(org.telegram.telegrambots.meta.api.objects.User userTg) {
-        return findUserByTelegramId(userTg.getId()).orElseGet(() -> createUser(userTg));
-    }
-
-    @Cacheable(value = "user")
-    public Optional<User> findUserByTelegramId(Long tgId){
-        return userRepository.findByTelegramId(tgId);
+        return userRepository.findByTelegramId(userTg.getId()).orElseGet(() -> createUser(userTg));
     }
 
     @Override
@@ -45,7 +41,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
     public User createUser(org.telegram.telegrambots.meta.api.objects.User userTg) {
         String language = userTg.getLanguageCode();
         if(language == null){

@@ -3,7 +3,7 @@ package com.example.partypal.models.entities.users;
 import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.UserEventLink;
 import com.example.partypal.models.entities.base.BaseEntity;
-import com.example.partypal.models.entities.base.City;
+import com.example.partypal.models.entities.City;
 import com.example.partypal.models.entities.telegram.State;
 import lombok.*;
 import org.hibernate.Hibernate;
@@ -79,13 +79,9 @@ public class User extends BaseEntity {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
+        if (getClass() != o.getClass() || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
         User user = (User) o;
         return getId() != null && Objects.equals(getId(), user.getId());
     }
 
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

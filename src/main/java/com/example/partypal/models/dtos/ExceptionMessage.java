@@ -1,4 +1,4 @@
-package com.example.partypal.exceptions;
+package com.example.partypal.models.dtos;
 
 import lombok.Data;
 import lombok.Getter;

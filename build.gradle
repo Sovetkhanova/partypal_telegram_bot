@@ -6,7 +6,7 @@ buildscript {
         springKafkaVersion = '2.7.2'
         mapstuctVersion = '1.5.3.Final'
         springCloudVersion = '2020.0.6'
-        flyway = '6.0.8'
+        flyway = '8.0.0'
     }
     repositories {
         mavenCentral()
@@ -57,7 +57,7 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.24'
     implementation 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
-
+    implementation 'com.github.ben-manes.caffeine:caffeine:2.8.8'
     runtimeOnly 'org.postgresql:postgresql'
 
     implementation "org.mapstruct:mapstruct:${mapstuctVersion}"

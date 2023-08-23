@@ -1,5 +1,6 @@
-package com.example.partypal.services;
+package com.example.partypal.controllers;
 
+import com.example.partypal.services.TelegramService;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +17,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class TelegramBotService extends TelegramLongPollingBot {
+public class TelegramBotController extends TelegramLongPollingBot {
 
     @Value("${bots.telegram.name:}")
     private String name;

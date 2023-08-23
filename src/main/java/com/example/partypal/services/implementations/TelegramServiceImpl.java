@@ -1,13 +1,14 @@
-package com.example.partypal.services;
+package com.example.partypal.services.implementations;
 
 import com.example.partypal.daos.repositories.*;
 import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.UserEventLink;
-import com.example.partypal.models.entities.base.Category;
-import com.example.partypal.models.entities.base.City;
+import com.example.partypal.models.entities.Category;
+import com.example.partypal.models.entities.City;
 import com.example.partypal.models.entities.telegram.Document;
 import com.example.partypal.models.entities.telegram.State;
 import com.example.partypal.models.entities.users.User;
+import com.example.partypal.services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Sort;
@@ -205,6 +206,7 @@ public class TelegramServiceImpl implements TelegramService {
     }
 
     @Override
+    @Transactional
     public List<SendMessage> makeEventAction(Update update) {
         List<SendMessage> sendMessageList = new ArrayList<>();
         CallbackQuery callbackQuery = update.getCallbackQuery();
@@ -280,7 +282,6 @@ public class TelegramServiceImpl implements TelegramService {
         }
     }
 
-    @Transactional
     public SendMessage remarkCommandReceived(long userId, long eventId, Update update) {
         Message message = (update.getMessage() == null) ? update.getCallbackQuery().getMessage() : update.getMessage();
         Optional<User> userOptional = userService.findUserById(userId);
@@ -304,7 +305,6 @@ public class TelegramServiceImpl implements TelegramService {
         }
     }
 
-    @Transactional
     public SendMessage deleteCommandReceived(long userId, long eventId, Update update) {
         Message message = (update.getMessage() == null) ? update.getCallbackQuery().getMessage() : update.getMessage();
         Optional<User> userOptional = userService.findUserById(userId);
@@ -447,14 +447,7 @@ public class TelegramServiceImpl implements TelegramService {
         buttonsTexts.add(getTextByLanguage(user.getLang(), "CHOOSE.EVENT"));
 
         for (List<Event> evts : events.values()) {
-            for (Event eventCard : evts) {
-                String buttonText = eventCard.getDate() + " - " + eventCard.getName();
-                InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
-                button.setCallbackData("event-" + eventCard.getId());
-                List<InlineKeyboardButton> inlineKeyboardButtonsRow = new ArrayList<>();
-                inlineKeyboardButtonsRow.add(button);
-                inlineButtons.add(inlineKeyboardButtonsRow);
-            }
+            extractedMethod(evts, inlineButtons);
 
         }
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
@@ -669,7 +662,22 @@ public class TelegramServiceImpl implements TelegramService {
                         || ((categoryId == 0) && event.getCity().getId().equals(cityId)) || (event.getCity().getId().equals(cityId) && event.getCategory().getId().equals(categoryId)))
                 .sorted(Comparator.comparing(Event::getDate).thenComparing(Event::getTime))
                 .collect(Collectors.toList());
+        InlineKeyboardMarkup keyboardMarkup = getInlineKeyboardMarkup(sortedEvents);
+        SendMessage message = createMessage(callbackQuery.getMessage(), "------------", false);
+        message.setReplyMarkup(keyboardMarkup);
+        return message;
+    }
+
+    @org.jetbrains.annotations.NotNull
+    private static InlineKeyboardMarkup getInlineKeyboardMarkup(List<Event> sortedEvents) {
         List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
+        extractedMethod(sortedEvents, inlineButtons);
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(inlineButtons);
+        return keyboardMarkup;
+    }
+
+    private static void extractedMethod(List<Event> sortedEvents, List<List<InlineKeyboardButton>> inlineButtons) {
         for (Event eventCard : sortedEvents) {
             String buttonText = eventCard.getDate() + " - " + eventCard.getName();
             InlineKeyboardButton button = new InlineKeyboardButton(buttonText);
@@ -678,11 +686,6 @@ public class TelegramServiceImpl implements TelegramService {
             inlineKeyboardButtons.add(button);
             inlineButtons.add(inlineKeyboardButtons);
         }
-        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
-        keyboardMarkup.setKeyboard(inlineButtons);
-        SendMessage message = createMessage(callbackQuery.getMessage(), "------------", false);
-        message.setReplyMarkup(keyboardMarkup);
-        return message;
     }
 
     private List<Validable> handleMainCommands(CallbackQuery callbackQuery){

@@ -1,13 +1,14 @@
-package com.example.partypal.services;
+package com.example.partypal.services.implementations;
 
 import com.example.partypal.daos.repositories.CountryRepository;
 import com.example.partypal.daos.repositories.EventRepository;
 import com.example.partypal.daos.repositories.UserEventLinkRepository;
 import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.users.User;
+import com.example.partypal.services.EventService;
+import com.example.partypal.services.UserService;
 import com.example.partypal.services.base.BaseServiceImpl;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +16,7 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventRepository> implements EventService{
+public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventRepository> implements EventService {
     private final EventRepository eventRepository;
     private final CountryRepository countryRepository;
     private final UserEventLinkRepository userEventLinkRepository;
@@ -35,12 +36,6 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
         return eventSaved;
     }
 
-    @Override
-    public Event getOrCreateEvent(User user, Long messageId) {
-        return findEventByMessageId(messageId).orElseGet(() -> createEvent(user, messageId));
-    }
-
-    @Cacheable("event")
     public Optional<Event> findEventByMessageId(Long messageId){
         return eventRepository.findByTgId(messageId);
     }

@@ -13,7 +13,7 @@ import javax.validation.constraints.NotNull;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.example.partypal.models.entities.base.LangContainer.getGlobalLanguages;
+import static com.example.partypal.models.entities.LangContainer.getGlobalLanguages;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

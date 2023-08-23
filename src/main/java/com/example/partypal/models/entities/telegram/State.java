@@ -3,10 +3,13 @@ package com.example.partypal.models.entities.telegram;
 import com.example.partypal.models.entities.base.BaseEntityWithCode;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
 import javax.persistence.Cacheable;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Entity
 @Cacheable

@@ -2,13 +2,11 @@ package com.example.partypal.models.entities.telegram;
 
 import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.base.BaseEntity;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import javax.persistence.*;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

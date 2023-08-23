@@ -1,5 +1,6 @@
-package com.example.partypal.models.entities.base;
+package com.example.partypal.models.entities;
 
+import com.example.partypal.models.entities.base.BaseEntityWithCode;
 import lombok.*;
 import org.hibernate.Hibernate;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
@@ -22,10 +23,6 @@ public class LangContainer extends BaseEntityWithCode {
     protected static String lang = "ru";
     public String name;
 
-    public static String setGlobalLanguages(String s) {
-        return lang = s;
-    }
-
     public static String getGlobalLanguages() {
         return lang;
     }
@@ -33,7 +30,7 @@ public class LangContainer extends BaseEntityWithCode {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
+        if (getClass() != o.getClass() || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
         LangContainer that = (LangContainer) o;
         return getId() != null && Objects.equals(getId(), that.getId());
     }

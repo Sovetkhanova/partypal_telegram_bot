@@ -20,7 +20,7 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 
 @Configuration
-public class FeignSupportConfig {
+public class FeignSupportConfiguration {
 
     @Bean
     public Encoder feignEncoder() {
