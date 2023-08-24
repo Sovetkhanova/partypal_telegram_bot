@@ -323,15 +323,19 @@ public class TelegramServiceImpl implements TelegramService {
         int subscriptionId = Integer.parseInt(parts[1].replaceAll("\\D", ""));
         long userId = Long.parseLong(parts[2].replaceAll("\\D", ""));
         Optional<Subscription> subscription;
+        String code;
         switch (subscriptionId){
             case 0:
                 subscription = subscriptionRepository.findByCode(Subscription.Code.WEEK_5.name());
+                code = "WEEK.TOP5";
                 break;
             case 1:
                 subscription = subscriptionRepository.findByCode(Subscription.Code.TWO_WEEK_5.name());
+                code = "2WEEK.TOP5";
                 break;
             case 2:
                 subscription = subscriptionRepository.findByCode(Subscription.Code.MONTH_5.name());
+                code = "MONTH.TOP5";
                 break;
             default:
                 throw new IllegalStateException("Unexpected value: " + subscriptionId);
@@ -341,7 +345,7 @@ public class TelegramServiceImpl implements TelegramService {
             User user1 = user.get();
             sendInvoice.setChatId(callbackQuery.getMessage().getChatId());
             sendInvoice.setTitle(getTextByLanguage(user1.getLang(), "SUBSCRIPTION.PAYMENT"));
-            sendInvoice.setDescription(subscription.get().getCode());
+            sendInvoice.setDescription(getTextByLanguage(user1.getLang(), code));
             sendInvoice.setPayload(callbackQuery.getData());
             sendInvoice.setProviderToken(providedToken);
             sendInvoice.setCurrency("KZT");

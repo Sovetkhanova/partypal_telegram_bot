@@ -36,10 +36,6 @@ public class EventServiceImpl extends BaseServiceImpl<Event, Long, EventReposito
         return eventSaved;
     }
 
-    public Optional<Event> findEventByMessageId(Long messageId){
-        return eventRepository.findByTgId(messageId);
-    }
-
     @Override
     @Transactional
     public void saveEvent(Event event) {
