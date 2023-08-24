@@ -30,12 +30,17 @@ public class GeocoderServiceImpl implements GeocoderService {
     public String getPlace(Double longitude, Double latitude) {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> requestEntity = new HttpEntity<>(headers);
-        ApiResponse apiResponse = executeRequest(url + "/?apikey=" + key + "&geocode="+ longitude + "," + latitude+ "&format=json", HttpMethod.GET, requestEntity);
-        JsonObject response = apiResponse.getJson().getAsJsonObject("response")
-                .getAsJsonObject("GeoObjectCollection")
-                .getAsJsonArray("featureMember").get(0).getAsJsonObject()
-                .getAsJsonObject("GeoObject");
-        return response.get("name").getAsString();
+        try{
+            ApiResponse apiResponse = executeRequest(url + "/?apikey=" + key + "&geocode="+ longitude + "," + latitude+ "&format=json", HttpMethod.GET, requestEntity);
+            JsonObject response = apiResponse.getJson().getAsJsonObject("response")
+                    .getAsJsonObject("GeoObjectCollection")
+                    .getAsJsonArray("featureMember").get(0).getAsJsonObject()
+                    .getAsJsonObject("GeoObject");
+            return response.get("name").getAsString();
+        }
+        catch (Exception e){
+            return String.valueOf(longitude).concat(":").concat(String.valueOf(latitude));
+        }
     }
 
     public ApiResponse executeRequest(String url, HttpMethod method, HttpEntity<?> requestEntity) {

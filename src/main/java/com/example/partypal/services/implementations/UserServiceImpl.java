@@ -24,9 +24,12 @@ public class UserServiceImpl implements UserService {
     private final UserEventLinkRepository userEventLinkRepository;
 
     @Override
-    @Transactional
     public User getOrCreateUser(org.telegram.telegrambots.meta.api.objects.User userTg) {
-        return userRepository.findByTelegramId(userTg.getId()).orElseGet(() -> createUser(userTg));
+        return findUserByTelegramId(userTg.getId()).orElseGet(() -> createUser(userTg));
+    }
+
+    public Optional<User> findUserByTelegramId(Long tgId){
+        return userRepository.findByTelegramId(tgId);
     }
 
     @Override
@@ -41,6 +44,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public User createUser(org.telegram.telegrambots.meta.api.objects.User userTg) {
         String language = userTg.getLanguageCode();
         if(language == null){

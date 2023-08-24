@@ -206,7 +206,6 @@ public class TelegramServiceImpl implements TelegramService {
     }
 
     @Override
-    @Transactional
     public List<SendMessage> makeEventAction(Update update) {
         List<SendMessage> sendMessageList = new ArrayList<>();
         CallbackQuery callbackQuery = update.getCallbackQuery();
@@ -282,6 +281,7 @@ public class TelegramServiceImpl implements TelegramService {
         }
     }
 
+    @Transactional
     public SendMessage remarkCommandReceived(long userId, long eventId, Update update) {
         Message message = (update.getMessage() == null) ? update.getCallbackQuery().getMessage() : update.getMessage();
         Optional<User> userOptional = userService.findUserById(userId);
@@ -305,6 +305,7 @@ public class TelegramServiceImpl implements TelegramService {
         }
     }
 
+    @Transactional
     public SendMessage deleteCommandReceived(long userId, long eventId, Update update) {
         Message message = (update.getMessage() == null) ? update.getCallbackQuery().getMessage() : update.getMessage();
         Optional<User> userOptional = userService.findUserById(userId);
