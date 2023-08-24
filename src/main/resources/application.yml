@@ -33,6 +33,7 @@ bots:
   telegram:
     name: ${TELEGRAM_BOT_NAME:almaty_partypal_bot}
     token: ${TELEGRAM_BOT_TOKEN:5888573729:AAHkO5pn7EO2LgGs_-mTtBiEYuEAvjqCZZM}
+    paymentToken: ${TELEGRAM_BOT_PAYMENT_TOKEN:5420394252:TEST:543267}
 eureka:
   client:
     enabled: ${EUREKA_CLIENT_ENABLED:false}
