@@ -1,7 +1,5 @@
-package com.example.partypal.models;
+package com.example.partypal.models.entities;
 
-import com.example.partypal.models.entities.Event;
-import com.example.partypal.models.entities.Subscription;
 import com.example.partypal.models.entities.base.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;

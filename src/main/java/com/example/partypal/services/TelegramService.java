@@ -50,4 +50,6 @@ public interface TelegramService {
     AnswerPreCheckoutQuery handlePayment(Update update);
 
     SendMessage handleSuccessfulPayment(Update update);
+
+    SendMessage getMySubscriptionsCommandReceived(Message message);
 }

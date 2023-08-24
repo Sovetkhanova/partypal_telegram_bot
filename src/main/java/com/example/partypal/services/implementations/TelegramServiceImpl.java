@@ -1,11 +1,12 @@
 package com.example.partypal.services.implementations;
 
 import com.example.partypal.daos.repositories.*;
-import com.example.partypal.models.SubscriptionEventLink;
+import com.example.partypal.models.entities.SubscriptionEventLink;
 import com.example.partypal.models.entities.*;
 import com.example.partypal.models.entities.telegram.Document;
 import com.example.partypal.models.entities.telegram.State;
 import com.example.partypal.models.entities.users.User;
+import com.example.partypal.projectors.SubscriptionEventLinkProjector;
 import com.example.partypal.services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,9 +69,9 @@ public class TelegramServiceImpl implements TelegramService {
         Optional<User> user = userService.findUserById(userId);
         if(user.isPresent()){
             User user1 = user.get();
-            subscriptions.add(getTextByLanguage(user1.getLang(), "WEEK.TOP5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.WEEK_5.name()).get().getPrice())));
-            subscriptions.add(getTextByLanguage(user1.getLang(), "2WEEK.TOP5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.TWO_WEEK_5.name()).get().getPrice())));
-            subscriptions.add(getTextByLanguage(user1.getLang(), "MONTH.TOP5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.MONTH_5.name()).get().getPrice())));
+            subscriptions.add(getTextByLanguage(user1.getLang(), "WEEK_5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.WEEK_5.name()).get().getPrice())));
+            subscriptions.add(getTextByLanguage(user1.getLang(), "TWO_WEEK_5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.TWO_WEEK_5.name()).get().getPrice())));
+            subscriptions.add(getTextByLanguage(user1.getLang(), "MONTH_5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.MONTH_5.name()).get().getPrice())));
             int buttonsPerRow = 1;
             for (int i = 0; i < subscriptions.size(); i++) {
                 InlineKeyboardButton button = new InlineKeyboardButton(subscriptions.get(i));
@@ -323,19 +324,15 @@ public class TelegramServiceImpl implements TelegramService {
         int subscriptionId = Integer.parseInt(parts[1].replaceAll("\\D", ""));
         long userId = Long.parseLong(parts[2].replaceAll("\\D", ""));
         Optional<Subscription> subscription;
-        String code;
         switch (subscriptionId){
             case 0:
                 subscription = subscriptionRepository.findByCode(Subscription.Code.WEEK_5.name());
-                code = "WEEK.TOP5";
                 break;
             case 1:
                 subscription = subscriptionRepository.findByCode(Subscription.Code.TWO_WEEK_5.name());
-                code = "2WEEK.TOP5";
                 break;
             case 2:
                 subscription = subscriptionRepository.findByCode(Subscription.Code.MONTH_5.name());
-                code = "MONTH.TOP5";
                 break;
             default:
                 throw new IllegalStateException("Unexpected value: " + subscriptionId);
@@ -345,7 +342,7 @@ public class TelegramServiceImpl implements TelegramService {
             User user1 = user.get();
             sendInvoice.setChatId(callbackQuery.getMessage().getChatId());
             sendInvoice.setTitle(getTextByLanguage(user1.getLang(), "SUBSCRIPTION.PAYMENT"));
-            sendInvoice.setDescription(getTextByLanguage(user1.getLang(), code));
+            sendInvoice.setDescription(getTextByLanguage(user1.getLang(), subscription.get().getCode()));
             sendInvoice.setPayload(callbackQuery.getData());
             sendInvoice.setProviderToken(providedToken);
             sendInvoice.setCurrency("KZT");
@@ -399,6 +396,23 @@ public class TelegramServiceImpl implements TelegramService {
             eventService.saveEvent(event1);
         }
         return createMessage(update.getMessage(), getTextByLanguage(user.getLang(), "CREATED"),false);
+    }
+
+    @Override
+    public SendMessage getMySubscriptionsCommandReceived(Message message) {
+        User user = userService.getOrCreateUser(message.getFrom());
+        List<SubscriptionEventLinkProjector> subscriptionEventLinks = subscriptionEventLinkRepository.findAllByEvent_CreatedUser_Id(user.getId());
+        return createMessage(message, createSubscriptionsCardMessage(subscriptionEventLinks),false);
+    }
+
+    private String createSubscriptionsCardMessage(List<SubscriptionEventLinkProjector> subscriptionEventLinks) {
+        StringBuilder messageText = new StringBuilder();
+        for (SubscriptionEventLinkProjector linkProjector : subscriptionEventLinks) {
+            messageText.append("*").append(linkProjector.getName()).append("*").append("\n");
+            messageText.append("*").append(linkProjector.getCode()).append(" - ").append(linkProjector.getPromoteUntil()).append("*").append("\n");
+            messageText.append("\n----------------------\n\n");
+        }
+        return messageText.toString();
     }
 
     public SendMessage deleteRemarkCommandReceived(long userId, long eventId, Update update) {

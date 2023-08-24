@@ -116,6 +116,9 @@ public class TelegramBotController extends TelegramLongPollingBot {
         if ("/lang".equals(messageText)) {
             execute(telegramService.chooseLanguageCommandReceived(message));
         }
+        if ("/subscriptions".equals(messageText)) {
+            execute(telegramService.getMySubscriptionsCommandReceived(message));
+        }
         if (!messageText.startsWith("/")) {
             handleMessagePhoto(update);
         }

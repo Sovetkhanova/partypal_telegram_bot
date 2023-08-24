@@ -1,6 +1,5 @@
 package com.example.partypal.models.entities;
 
-import com.example.partypal.models.SubscriptionEventLink;
 import com.example.partypal.models.entities.base.BaseEntity;
 import com.example.partypal.models.entities.telegram.Document;
 import com.example.partypal.models.entities.users.User;
