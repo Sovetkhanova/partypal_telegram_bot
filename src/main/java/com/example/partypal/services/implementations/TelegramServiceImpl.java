@@ -800,8 +800,10 @@ public class TelegramServiceImpl implements TelegramService {
             return sendChoosingActionButtons(callbackQuery);
         }
         List<Event> sortedEvents = events.stream()
-                .filter(event -> ((cityId == 0) && (categoryId == 0)) || ((cityId == 0) && (event.getCategory().getId().equals(categoryId)))
-                        || ((categoryId == 0) && event.getCity().getId().equals(cityId)) || (event.getCity().getId().equals(cityId) && event.getCategory().getId().equals(categoryId)))
+                .filter(event -> ((cityId == 0) && (categoryId == 0)) ||
+                        ((cityId == 0) && (event.getCategory() != null && event.getCategory().getId().equals(categoryId))) ||
+                        ((categoryId == 0) && (event.getCity() != null && event.getCity().getId().equals(cityId))) ||
+                        ((event.getCity() != null && event.getCity().getId().equals(cityId)) && (event.getCategory() != null && event.getCategory().getId().equals(categoryId))))
                 .sorted(Comparator.comparing(Event::getDate).thenComparing(Event::getTime))
                 .sorted(Comparator.comparing(event -> event.getSubscriptionEventLink() == null ? 1 : 0))
                 .collect(Collectors.toList());
