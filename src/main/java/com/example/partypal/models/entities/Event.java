@@ -1,8 +1,10 @@
 package com.example.partypal.models.entities;
 
+import com.example.partypal.models.SubscriptionEventLink;
 import com.example.partypal.models.entities.base.BaseEntity;
 import com.example.partypal.models.entities.telegram.Document;
 import com.example.partypal.models.entities.users.User;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
 import javax.persistence.*;
@@ -64,5 +66,11 @@ public class Event extends BaseEntity {
     @OneToOne(cascade = CascadeType.REMOVE)
     @JoinColumn(name = "document_id")
     private Document document;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subscription_ref")
+    @ToString.Exclude
+    @JsonIgnore
+    private SubscriptionEventLink subscriptionEventLink;
 
 }

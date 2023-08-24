@@ -1,23 +1,26 @@
 package com.example.partypal.services.implementations;
 
 import com.example.partypal.daos.repositories.*;
-import com.example.partypal.models.entities.Event;
-import com.example.partypal.models.entities.UserEventLink;
-import com.example.partypal.models.entities.Category;
-import com.example.partypal.models.entities.City;
+import com.example.partypal.models.SubscriptionEventLink;
+import com.example.partypal.models.entities.*;
 import com.example.partypal.models.entities.telegram.Document;
 import com.example.partypal.models.entities.telegram.State;
 import com.example.partypal.models.entities.users.User;
 import com.example.partypal.services.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.interfaces.Validable;
+import org.telegram.telegrambots.meta.api.methods.AnswerPreCheckoutQuery;
+import org.telegram.telegrambots.meta.api.methods.invoices.SendInvoice;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.*;
+import org.telegram.telegrambots.meta.api.objects.payments.LabeledPrice;
+import org.telegram.telegrambots.meta.api.objects.payments.SuccessfulPayment;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -25,6 +28,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import javax.validation.constraints.NotNull;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -47,10 +51,46 @@ public class TelegramServiceImpl implements TelegramService {
     private final GeocoderService geocoderService;
     private final UserEventLinkRepository userEventLinkRepository;
     private final DocumentServiceImpl documentService;
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionEventLinkRepository subscriptionEventLinkRepository;
+    @Value("${bots.telegram.paymentToken:}")
+    private String providedToken;
 
     @Override
     public SendMessage startCommandReceived(Message message) {
         return chooseLanguageCommandReceived(message);
+    }
+
+    private SendMessage promoteCommandReceived(long userId, long eventId, Update update) {
+        List<List<InlineKeyboardButton>> inlineButtons = new ArrayList<>();
+        List<InlineKeyboardButton> inlineKeyboardButtons = new ArrayList<>();
+        List<String> subscriptions = new ArrayList<>();
+        Optional<User> user = userService.findUserById(userId);
+        if(user.isPresent()){
+            User user1 = user.get();
+            subscriptions.add(getTextByLanguage(user1.getLang(), "WEEK.TOP5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.WEEK_5.name()).get().getPrice())));
+            subscriptions.add(getTextByLanguage(user1.getLang(), "2WEEK.TOP5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.TWO_WEEK_5.name()).get().getPrice())));
+            subscriptions.add(getTextByLanguage(user1.getLang(), "MONTH.TOP5").concat("  -  ").concat(String.valueOf(subscriptionRepository.findByCode(Subscription.Code.MONTH_5.name()).get().getPrice())));
+            int buttonsPerRow = 1;
+            for (int i = 0; i < subscriptions.size(); i++) {
+                InlineKeyboardButton button = new InlineKeyboardButton(subscriptions.get(i));
+                button.setCallbackData("subs-".concat(String.valueOf(i)).concat("u-").concat(String.valueOf(userId).concat("e-").concat(String.valueOf(eventId))));
+                inlineKeyboardButtons.add(button);
+                if (inlineKeyboardButtons.size() == buttonsPerRow) {
+                    inlineButtons.add(inlineKeyboardButtons);
+                    inlineKeyboardButtons = new ArrayList<>();
+                }
+            }
+            if(!inlineKeyboardButtons.isEmpty()){
+                inlineButtons.add(inlineKeyboardButtons);
+            }
+            InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+            keyboardMarkup.setKeyboard(inlineButtons);
+            SendMessage messageReturn = createMessage(update.getCallbackQuery().getMessage(), getTextByLanguage(user1.getLang(), "CHOOSE.SUBSCRIPTION"), true);
+            messageReturn.setReplyMarkup(keyboardMarkup);
+            return messageReturn;
+        }
+        else return null;
     }
 
     @Override
@@ -163,6 +203,7 @@ public class TelegramServiceImpl implements TelegramService {
                 if (isCreator) {
                     mainActionsMap.put(0, "1. " + getTextByLanguage("kz", "EVENT.EDIT"));
                     mainActionsMap.put(1, "2. " + getTextByLanguage("kz", "EVENT.DELETE"));
+                    mainActionsMap.put(4, "3. " + getTextByLanguage("kz", "EVENT.PROMOTE"));
                 } else {
                     mainActionsMap.put(2, "1. " + getTextByLanguage("kz", "EVENT.REMARK"));
                     mainActionsMap.put(3, "2. " + getTextByLanguage("kz", "EVENT.REMARK.DELETE"));
@@ -173,6 +214,7 @@ public class TelegramServiceImpl implements TelegramService {
                 if (isCreator) {
                     mainActionsMap.put(0, "1. " + getTextByLanguage("en", "EVENT.EDIT"));
                     mainActionsMap.put(1, "2. " + getTextByLanguage("en", "EVENT.DELETE"));
+                    mainActionsMap.put(4, "3. " + getTextByLanguage("en", "EVENT.PROMOTE"));
                 } else {
                     mainActionsMap.put(2, "1. " + getTextByLanguage("en", "EVENT.REMARK"));
                     mainActionsMap.put(3, "2. " + getTextByLanguage("en", "EVENT.REMARK.DELETE"));
@@ -183,6 +225,7 @@ public class TelegramServiceImpl implements TelegramService {
                 if (isCreator) {
                     mainActionsMap.put(0, "1. " + getTextByLanguage("ru", "EVENT.EDIT"));
                     mainActionsMap.put(1, "2. " + getTextByLanguage("ru", "EVENT.DELETE"));
+                    mainActionsMap.put(4, "3. " + getTextByLanguage("ru", "EVENT.PROMOTE"));
                 } else {
                     mainActionsMap.put(2, "1. " + getTextByLanguage("ru", "EVENT.REMARK"));
                     mainActionsMap.put(3, "2. " + getTextByLanguage("ru", "EVENT.REMARK.DELETE"));
@@ -190,7 +233,7 @@ public class TelegramServiceImpl implements TelegramService {
                 answer = getTextByLanguage("ru", "EVENT.CHOOSE.MAIN.ACTION");
                 break;
         }
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             if (mainActionsMap.containsKey(i)) {
                 InlineKeyboardButton button = new InlineKeyboardButton(mainActionsMap.get(i));
                 button.setCallbackData("eventAction-" + i + "user-" + user.getId() + "event-" + event.getId());
@@ -229,6 +272,14 @@ public class TelegramServiceImpl implements TelegramService {
                 sendMessageList.add(deleteRemarkCommandReceived(userId, eventId, update));
                 sendMessageList.add(sendChoosingActionButtons(callbackQuery));
                 break;
+            case 4:
+                SendMessage sendMessage = promoteCommandReceived(userId, eventId, update);
+                if (sendMessage != null) {
+                    sendMessageList.add(sendMessage);
+                    break;
+                }
+                else sendMessageList.add(sendChoosingActionButtons(callbackQuery));
+                break;
             default:
                 return null;
         }
@@ -262,6 +313,88 @@ public class TelegramServiceImpl implements TelegramService {
             event.setDocument(documentList.get(maxId));
             eventService.saveEvent(event);
         }
+    }
+
+    @Override
+    public SendInvoice sendInvoice(Update update) {
+        SendInvoice sendInvoice = new SendInvoice();
+        CallbackQuery callbackQuery = update.getCallbackQuery();
+        String[] parts = callbackQuery.getData().split("-");
+        int subscriptionId = Integer.parseInt(parts[1].replaceAll("\\D", ""));
+        long userId = Long.parseLong(parts[2].replaceAll("\\D", ""));
+        Optional<Subscription> subscription;
+        switch (subscriptionId){
+            case 0:
+                subscription = subscriptionRepository.findByCode(Subscription.Code.WEEK_5.name());
+                break;
+            case 1:
+                subscription = subscriptionRepository.findByCode(Subscription.Code.TWO_WEEK_5.name());
+                break;
+            case 2:
+                subscription = subscriptionRepository.findByCode(Subscription.Code.MONTH_5.name());
+                break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + subscriptionId);
+        }
+        Optional<User> user = userService.findUserById(userId);
+        if(subscription.isPresent() && user.isPresent()){
+            User user1 = user.get();
+            sendInvoice.setChatId(callbackQuery.getMessage().getChatId());
+            sendInvoice.setTitle(getTextByLanguage(user1.getLang(), "SUBSCRIPTION.PAYMENT"));
+            sendInvoice.setDescription(subscription.get().getCode());
+            sendInvoice.setPayload(callbackQuery.getData());
+            sendInvoice.setProviderToken(providedToken);
+            sendInvoice.setCurrency("KZT");
+            LabeledPrice labeledPrice = new LabeledPrice("price", subscription.get().getPrice() * 100);
+            sendInvoice.setPrices(Collections.singletonList(labeledPrice));
+            return sendInvoice;
+        }
+        else throw new IllegalStateException("Unexpected value: " + subscriptionId);
+    }
+
+    @Override
+    public AnswerPreCheckoutQuery handlePayment(Update update) {
+        return new AnswerPreCheckoutQuery(update.getPreCheckoutQuery().getId(), true);
+    }
+
+    @Override
+    @Transactional
+    public SendMessage handleSuccessfulPayment(Update update) {
+        SuccessfulPayment successfulPayment = update.getMessage().getSuccessfulPayment();
+        String invoicePayload = successfulPayment.getInvoicePayload();
+        String[] parts = invoicePayload.split("-");
+        int subscriptionId = Integer.parseInt(parts[1].replaceAll("\\D", ""));
+        int userId = Integer.parseInt(parts[2].replaceAll("\\D", ""));
+        long eventId = Long.parseLong(parts[3].replaceAll("\\D", ""));
+        Optional<Event> event = eventRepository.findById(eventId);
+        String code;
+        switch (subscriptionId){
+            case 0:
+                code = Subscription.Code.WEEK_5.name();
+                break;
+            case 1:
+                code = Subscription.Code.TWO_WEEK_5.name();
+                break;
+            case 2:
+                code = Subscription.Code.MONTH_5.name();
+                break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + subscriptionId);
+
+        }
+        Optional<Subscription> subscription = subscriptionRepository.findByCode(code);
+        User user = userService.findUserById((long) userId).orElseThrow();
+        if(event.isPresent() && subscription.isPresent()){
+            Event event1 = event.get();
+            SubscriptionEventLink subscriptionEventLink = SubscriptionEventLink.builder()
+                    .event(event1)
+                    .subscription(subscription.get())
+                    .promoteUntil(Date.valueOf(LocalDate.now().plusDays(subscription.get().getDaysCount())))
+                    .build();
+            event1.setSubscriptionEventLink(subscriptionEventLinkRepository.save(subscriptionEventLink));
+            eventService.saveEvent(event1);
+        }
+        return createMessage(update.getMessage(), getTextByLanguage(user.getLang(), "CREATED"),false);
     }
 
     public SendMessage deleteRemarkCommandReceived(long userId, long eventId, Update update) {
@@ -644,6 +777,7 @@ public class TelegramServiceImpl implements TelegramService {
         return sendMessage;
     }
 
+    @Transactional
     public SendMessage chooseCategoryForSearch(Update update) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         String[] parts = callbackQuery.getData().split("-");
@@ -654,6 +788,14 @@ public class TelegramServiceImpl implements TelegramService {
                 .collect(Collectors.toList());
         eventList.removeAll(events);
         eventService.deleteAll(eventList);
+        events.stream()
+                .filter(event -> event.getSubscriptionEventLink() != null)
+                .forEach(event -> {
+                    SubscriptionEventLink subscriptionEventLink = event.getSubscriptionEventLink();
+                    if(subscriptionEventLink.getPromoteUntil().toLocalDate().isBefore(LocalDate.now())){
+                        subscriptionEventLinkRepository.delete(subscriptionEventLink);
+                    }
+                });
         if (events.isEmpty()) {
             return sendChoosingActionButtons(callbackQuery);
         }
@@ -661,6 +803,7 @@ public class TelegramServiceImpl implements TelegramService {
                 .filter(event -> ((cityId == 0) && (categoryId == 0)) || ((cityId == 0) && (event.getCategory().getId().equals(categoryId)))
                         || ((categoryId == 0) && event.getCity().getId().equals(cityId)) || (event.getCity().getId().equals(cityId) && event.getCategory().getId().equals(categoryId)))
                 .sorted(Comparator.comparing(Event::getDate).thenComparing(Event::getTime))
+                .sorted(Comparator.comparing(event -> event.getSubscriptionEventLink() == null ? 1 : 0))
                 .collect(Collectors.toList());
         InlineKeyboardMarkup keyboardMarkup = getInlineKeyboardMarkup(sortedEvents);
         SendMessage message = createMessage(callbackQuery.getMessage(), "------------", false);

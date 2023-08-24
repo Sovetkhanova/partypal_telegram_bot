@@ -240,4 +240,24 @@ create table partypal_tg.document(
 );
 alter table partypal_tg.document add column size bigint;
 alter table partypal_event.event add column document_id bigint references partypal_tg.document (id) on delete set null;
-alter table partypal_user.user_account add column actual_event_id bigint references partypal_event.event(id) on delete set null ;
+alter table partypal_user.user_account add column actual_event_id bigint references partypal_event.event(id) on delete set null;
+
+create table partypal_event.subscription(
+    id BIGSERIAL primary key,
+    code varchar unique not null,
+    price int,
+    days bigint
+);
+
+insert into partypal_event.subscription (code, price, days) VALUES ('WEEK_5', 940, 7);
+insert into partypal_event.subscription (code, price, days) VALUES ('TWO_WEEK_5', 1540, 14);
+insert into partypal_event.subscription (code, price, days) VALUES ('MONTH_5', 2410, 30);
+
+create table partypal_event.subscription_event_reference(
+    id bigserial primary key,
+    event_id bigint references partypal_event.event(id) on delete cascade,
+    subscription_id bigint references partypal_event.subscription(id) on delete cascade,
+    promote_until date
+);
+
+alter table partypal_event.event add column subscription_ref bigint references partypal_event.subscription_event_reference(id) on delete set null;

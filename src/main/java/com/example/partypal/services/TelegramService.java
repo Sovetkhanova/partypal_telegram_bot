@@ -3,6 +3,8 @@ package com.example.partypal.services;
 import com.example.partypal.models.entities.Event;
 import com.example.partypal.models.entities.users.User;
 import org.telegram.telegrambots.meta.api.interfaces.Validable;
+import org.telegram.telegrambots.meta.api.methods.AnswerPreCheckoutQuery;
+import org.telegram.telegrambots.meta.api.methods.invoices.SendInvoice;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -42,4 +44,10 @@ public interface TelegramService {
     List<SendMessage> makeEventAction(Update update);
 
     void handlePhoto(Message message);
+
+    SendInvoice sendInvoice(Update update);
+
+    AnswerPreCheckoutQuery handlePayment(Update update);
+
+    SendMessage handleSuccessfulPayment(Update update);
 }

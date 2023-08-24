@@ -48,7 +48,13 @@ public class TelegramBotController extends TelegramLongPollingBot {
         if (update.hasCallbackQuery()) {
             handleCallBackQuery(update);
         }
+        if(update.hasPreCheckoutQuery()){
+            execute(telegramService.handlePayment(update));
+        }
         if (message != null) {
+            if(message.hasSuccessfulPayment()){
+                execute(telegramService.handleSuccessfulPayment(update));
+            }
             if (message.hasText()) {
                 handleMessageText(update);
             }
@@ -181,6 +187,9 @@ public class TelegramBotController extends TelegramLongPollingBot {
                     }
                 }
             }
+        }
+        if(callbackData.startsWith("subs-")){
+            execute(telegramService.sendInvoice(update));
         }
     }
 
